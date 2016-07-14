@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="ProductInterest">
+	<select id="generateSeq" resultClass="Long">
+		SELECT SEQ_PRODUCT_INTEREST.nextval FROM dual
+	</select>
+
+	<insert id="insert" parameterClass="Param">
+		INSERT INTO T_PRODUCT_INTEREST
+		(seq, mem_id, dpid, regist_Date) VALUES
+		(#seq#, #mem_id#, #dpid#, sysdate) 
+	</insert>
+
+	<insert id="delete" parameterClass="Param">
+		DELETE FROM T_PRODUCT_INTEREST
+		WHERE SEQ = #seq# 
+	</insert>
+		
+	<select id="isExistsDpid" resultClass="Long" parameterClass="Param">
+		SELECT COUNT(*) FROM T_PRODUCT_INTEREST
+		WHERE DPID = #dpid#
+		and mem_id =#mem_id#
+		and regist_Date >= sysdate - 1
+	</select>
+	
+	
+	<sql id="ProductInterest.getListParam">
+		 <![CDATA[   
+		 		AND	interest.mem_id	=	 #mem_id#
+				AND display.status ='S'		
+				AND display.list_yn = 'Y'	 
+			    AND interest.regist_Date >= SYSDATE - 1		    
+			    AND display.start_date <= SYSDATE
+			    AND display.end_date >= SYSDATE		
+		   		AND display.approval_yn = 'Y'
+				AND display.type       <> 'G'	    		    			    		    			  
+			]]>		    			  
+			<isNotEmpty property="show_grade_type">
+				<isEqual property="show_grade_type" compareValue="Y">
+				AND display.show_grade_type	in ('A', 'E')
+				</isEqual>	
+				<isNotEqual property="show_grade_type" compareValue="Y">
+				AND display.show_grade_type	in ('A', 'S')
+				</isNotEqual>
+			</isNotEmpty>		
+			<isNotEmpty property="cate_seq">	
+			    AND newprd.cate_seq  IN
+				    (
+				         SELECT cate_seq
+				           FROM t_cate
+				          WHERE site_code             = #site_code#
+				            AND status                = 'S'
+				            START WITH cate_seq       = #cate_seq#
+				            CONNECT BY prior cate_seq = p_cate_seq
+				    )
+			</isNotEmpty>							
+	</sql>	
+	
+	<select id="getInterestList" resultClass="Param" parameterClass="Param" >		  
+		select * from
+		( 		       
+			SELECT 
+				row_number() over (order by interest.regist_Date DESC) rnum,
+			    pc.dpid, pc.grade_code, pc.device_type, pc.price,   
+			    pc.promotion_gift,	pc.promotion_discount, pc.promotion_online, pc.image_original, pc.image_large,
+				pc.image_medium, pc.image_small, pc.image_thumb, pc.review_cnt, pc.review_score_avg,
+				pc.feature_01, pc.feature_02, pc.feature_03, pc.feature_04, pc.feature_05,   pc.option_cnt,
+				pc.feature_01_title,pc.feature_02_title,pc.feature_03_title,pc.feature_04_title,pc.feature_05_title,				
+			    display.site_code, display.pserial, display.title_l, display.title_s, display.tag, display.default_price, display.show_grade_type,
+			    display.regist_date, display.summary,  display.soldout, display.type, display.coupon_yn,			
+				f_active_stock(display.dpid) active_stock, 
+				interest.seq, pc.image_thumb as image_name
+			 FROM 
+				t_product_cache pc,  
+			    t_product_display display,
+				T_PRODUCT_INTEREST interest          
+			WHERE pc.dpid = display.dpid
+			AND display.dpid = interest.dpid		
+			<include refid="Common.productCache"/>							
+			<include refid="ProductInterest.getListParam"/> 	
+		  )	
+ 	    <![CDATA[   
+		  WHERE rnum <= #POS_END#
+		    AND rnum > #POS_STA#	
+		]]>		
+	</select>	
+	
+	<select id="getInterestListCount"  resultClass="Integer" parameterClass="Param" >
+			SELECT 
+				count(*)
+			 FROM 
+				t_product_cache pc, 
+			    t_product_display display,
+				T_PRODUCT_INTEREST interest           
+			WHERE pc.dpid = display.dpid
+			AND display.dpid = interest.dpid			
+			<include refid="Common.productCache"/>			
+			<include refid="ProductInterest.getListParam"/>		
+	</select>
+</sqlMap>

@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="Attendance">
+	<select id="getMyAttendanceList" parameterClass="Param" resultClass="Param">
+		SELECT days,
+		       NVL(b.check_date,'N') check_yn,
+		       NVL(b.gift_yn, 'N') gift_yn
+		  FROM 
+		       (SELECT TO_CHAR (base_mon + LEVEL - 1, 'yyyyMMdd') days 
+		         FROM 
+		              (SELECT TO_DATE (#sdate#, 'yyyyMMdd') base_mon 
+		                 FROM DUAL
+		              ) CONNECT BY base_mon + LEVEL - 1 <![CDATA[<]]>= TO_DATE(#edate#,'yyyyMMdd')
+		       ) a, 
+		       (SELECT mem_id, 
+		               check_date, 
+		               gift_yn,
+		               TO_CHAR(regdate,'yyyy.MM.dd') 
+		          FROM t_attendance_log a 
+		         WHERE mem_id = #mem_id#
+	               AND check_date <![CDATA[>=]]> #sdate#
+	               AND check_date <![CDATA[<=]]> #edate#
+		       ) b 
+		 WHERE a.days = b.check_date(+) 
+		ORDER BY a.days	
+	</select>
+	
+	<select id="isCheckTodayAttendance" parameterClass="Param" resultClass="Integer">
+	   SELECT count(*)
+	     FROM t_attendance_log
+		WHERE mem_id = #mem_id#
+	      AND check_date = #check_date#
+	</select>
+	
+	<select id="getAttendanceCnt" parameterClass="Param" resultClass="Integer">
+	   SELECT count(*)
+	     FROM t_attendance_log
+		WHERE mem_id = #mem_id#
+	      AND check_date LIKE #check_month# || '%'
+	</select>
+	
+	<insert id="applyTodayAttendance" parameterClass="Param">
+		INSERT INTO t_attendance_log
+			(mem_id, check_date, gift_yn, regdate) 
+		values
+			(#mem_id#, #check_date#, #gift_yn#, sysdate) 
+	</insert>
+	
+	<select id="getCommentList" parameterClass="Param" resultClass="Param">
+		<![CDATA[
+		SELECT *
+		  FROM (
+				SELECT ROW_NUMBER() OVER(ORDER BY YYYYMM, SEQ DESC) RNUM,
+					   A.*, B.MEM_NM
+				  FROM T_ATTENDANCE_COMMENT A, T_MEM B
+				 WHERE A.MEM_ID = B.MEM_ID
+				   AND A.YYYYMM = #yyyymm#
+				   AND A.STATUS = 'S'
+		  	   )
+		 WHERE RNUM > #POS_STA#
+		   AND RNUM <= #POS_END#
+		]]>
+	</select>
+	
+	<select id="getCommentListCount" parameterClass="Param" resultClass="java.lang.Integer">
+		SELECT COUNT(*)
+		  FROM T_ATTENDANCE_COMMENT A, T_MEM B
+		 WHERE A.MEM_ID = B.MEM_ID
+		   AND A.YYYYMM = #yyyymm#
+		   AND A.STATUS = 'S'
+	</select>
+	
+	<select id="getCommentInfo" parameterClass="java.lang.String" resultClass="Param">
+		SELECT *
+		  FROM T_ATTENDANCE_COMMENT
+		 WHERE SEQ = #seq#
+	</select>
+	
+	<insert id="insertComment" parameterClass="Param">
+		INSERT INTO T_ATTENDANCE_COMMENT
+			(
+				SEQ,
+				YYYYMM,
+				MEM_ID,
+				STATUS,
+				CONTENTS,
+				REGIST_DATE
+			)
+		VALUES
+			(
+				(SELECT NVL(MAX(SEQ), 0) + 1 FROM T_ATTENDANCE_COMMENT),
+				#yyyymm#,
+				#mem_id#,
+				'S',
+				#contents#,
+				SYSDATE
+			)
+	</insert>
+	
+	<update id="deleteComment" parameterClass="Param">
+		UPDATE T_ATTENDANCE_COMMENT
+		   SET STATUS = 'D'
+		 WHERE SEQ = #seq#
+		   AND MEM_ID = #mem_id#
+	</update>
+</sqlMap>

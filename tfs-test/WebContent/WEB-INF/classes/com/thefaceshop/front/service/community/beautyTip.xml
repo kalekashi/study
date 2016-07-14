@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="BeautyTip"> 
+	<resultMap id="Info" class="Param"> 
+		<result property="master_seq" column="master_seq"></result>
+		<result property="site_code" column="site_code"></result>
+		<result property="title" column="title"></result>
+		<result property="contents" column="contents" jdbcType="CLOB" javaType="java.lang.String"></result>
+		<result property="banner_image" column="banner_image"></result>
+		<result property="banner_image_mobile" column="banner_image_mobile"></result>
+		<result property="banner_sub_image" column="banner_sub_image"></result>
+		<result property="banner_sub_image_mobile" column="banner_sub_image_mobile"></result>
+		<result property="hit" column="hit"></result>
+		<result property="status" column="status"></result>
+		<result property="regist_user" column="regist_user"></result>
+		<result property="regist_date" column="regist_date"></result>
+		<result property="start_date" column="start_date"></result>
+		<result property="end_date" column="end_date"></result>
+	</resultMap>
+	
+	<select id="getIndexInfo" parameterClass="Param" resultClass="Param">
+	    SELECT /*+INDEX_DESC(a PK_BEAUTY_TIP) */ ROWNUM RNUM, master_seq,
+	        site_code, title, banner_image, banner_image_mobile, banner_sub_image, banner_sub_image_mobile,
+	        start_date, end_date, hit,
+	        status,
+	        regist_user, TO_CHAR(regist_date, 'YYYY.MM.DD') AS regist_date 
+	    FROM T_BEAUTY_TIP a
+	    WHERE a.master_seq > 0
+	    AND status = 'S'
+	    AND site_code = #site_code#
+		AND TRUNC(sysdate) BETWEEN TRUNC(START_DATE) AND TRUNC(end_date)
+		AND ROWNUM = 1
+	</select>
+			
+	<select id="getList" parameterClass="Param" resultClass="Param">
+		<![CDATA[
+			SELECT *
+			FROM (
+			    SELECT /*+INDEX_DESC(a PK_BEAUTY_TIP) */ ROWNUM RNUM, master_seq,
+			        site_code, title, banner_image, banner_image_mobile, banner_sub_image, banner_sub_image_mobile,
+			        start_date, end_date, hit,
+			        status,
+			        regist_user, TO_CHAR(regist_date, 'YYYY.MM.DD') AS regist_date 
+			    FROM T_BEAUTY_TIP a
+			    WHERE a.master_seq > 0
+			    AND status = 'S'
+			    AND site_code = #site_code#
+		]]>
+		<isNotEmpty property="ing">
+				AND TRUNC(sysdate) BETWEEN TRUNC(START_DATE) AND TRUNC(end_date)
+		</isNotEmpty>
+		<![CDATA[
+				AND ROWNUM <= #POS_END#
+			)	
+			WHERE RNUM > #POS_STA#
+		]]>			
+	</select>
+	
+	<select id="getListCount" parameterClass="Param" resultClass="java.lang.Integer">
+		<![CDATA[
+			SELECT COUNT(master_seq)
+		    FROM T_BEAUTY_TIP a
+		    WHERE a.master_seq > 0
+		    AND status = 'S'
+		    AND site_code = #site_code#
+		]]>
+		<isNotEmpty property="ing">
+				AND TRUNC(sysdate) BETWEEN TRUNC(START_DATE) AND TRUNC(end_date)
+		</isNotEmpty>
+	</select>
+	
+	<select id="getInfo" parameterClass="Param" resultMap="Info" >
+		SELECT master_seq, site_code, title,  banner_image, banner_image_mobile, banner_sub_image, banner_sub_image_mobile, contents,
+			TO_CHAR(start_date, 'YYYY.MM.DD') AS start_date, TO_CHAR(end_date, 'YYYY.MM.DD') AS end_date, hit,
+			regist_user, TO_CHAR(regist_date, 'YYYY.MM.DD') AS regist_date, status
+		FROM T_BEAUTY_TIP a
+		WHERE master_seq = #master_seq#
+		  AND status = 'S'
+		  AND site_code = #site_code# 
+	</select>
+	
+	<update id="increaseHit" parameterClass="Param">
+		UPDATE T_BEAUTY_TIP
+		SET    hit    = hit + 1
+		WHERE  master_seq    = #master_seq#
+	</update>	
+
+</sqlMap>

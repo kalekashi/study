@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="Shop">
+
+	<select id="getCityList" parameterClass="Param" resultClass="Param">
+		SELECT * FROM T_SHOP_CITY	
+   			WHERE sido_code = #area#
+	</select>
+	
+	<select id="getList" parameterClass="Param" resultClass="Param">
+		<![CDATA[
+		SELECT *
+		  FROM (
+		  		SELECT ROW_NUMBER() OVER(ORDER BY SEQ DESC) RNUM,
+		  		DECODE(A.STATUS, 'S', '활성', 'H', '비활성', 'D', '삭제') STATUS_NAME,
+		  				SEQ, A.SITE_CODE, AREA, A.NAME, ADDR, TEL,A.REGDATE,
+		  				A.MAP_URL, A.ETC_INFO1, A.ETC_INFO2, A.SHOP_TYPE, CITY, LATITUDE,LONGITUDE,
+		  				(SELECT NAME2 FROM T_CODE2 WHERE CODE1 = '03' AND CODE2 = A.AREA) AREA_NAME
+		  		  FROM T_SHOP_NEW A, T_SITE B
+		  		 WHERE A.STATUS = 'S'
+		]]>
+				   AND A.SITE_CODE = #site_code#
+		<isNotEmpty property="shop_type">
+				   AND A.SHOP_TYPE = #shop_type#
+		</isNotEmpty>		
+		<isNotEmpty property="area">
+				   AND A.AREA = #area#
+		</isNotEmpty>
+		<isNotEmpty property="name">
+				   AND A.NAME LIKE '%' || #name# || '%'
+		</isNotEmpty>
+		<isNotEmpty property="addr">
+				   AND A.addr LIKE '%' || #addr# || '%'
+		</isNotEmpty>		
+		<isNotEmpty property="city">
+				   AND A.CITY LIKE '%' || #city# || '%'
+		</isNotEmpty>
+		<![CDATA[
+		       )
+		 WHERE RNUM > #POS_STA#
+		   AND RNUM <= #POS_END#
+		]]>
+	</select>
+
+	<select id="getListCount" parameterClass="Param" resultClass="java.lang.Integer">
+		<![CDATA[
+		  		SELECT COUNT(*)
+		  		  FROM T_SHOP_NEW A
+		  		 WHERE A.STATUS = 'S'
+		]]>
+				   AND A.SITE_CODE = #site_code#
+		<isNotEmpty property="shop_type">
+				   AND A.SHOP_TYPE = #shop_type#
+		</isNotEmpty>				
+		<isNotEmpty property="area">
+				   AND A.AREA = #area#
+		</isNotEmpty>
+		<isNotEmpty property="name">
+				   AND A.NAME LIKE '%' || #name# || '%'
+		</isNotEmpty>
+		<isNotEmpty property="addr">
+				   AND A.addr LIKE '%' || #addr# || '%'
+		</isNotEmpty>				
+		<isNotEmpty property="city">
+				   AND A.CITY LIKE '%' || #city# || '%'
+		</isNotEmpty>
+	</select>
+	
+	<select id="getInfo" parameterClass="Param" resultClass="Param">
+		SELECT *
+		  FROM T_SHOP_NEW
+		 WHERE SEQ = #seq#
+		   and status = 'S'
+	</select>
+
+
+</sqlMap>

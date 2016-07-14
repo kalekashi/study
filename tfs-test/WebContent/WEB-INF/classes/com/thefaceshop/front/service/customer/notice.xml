@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="Notice">
+	<resultMap id="NoticeInfo" class="Param"> 
+		<result property="seq" column="seq"></result>
+		<result property="site_code" column="site_code"></result>
+		<result property="title" column="title"></result>
+		<result property="contents" column="contents" jdbcType="CLOB" javaType="java.lang.String"></result>
+		<result property="notice_type" column="notice_type"></result>
+		<result property="notice_type_name" column="notice_type_name"></result>
+		<result property="hit" column="hit"></result>
+		<result property="brand_yn" column="brand_yn"></result>
+		<result property="mall_yn" column="mall_yn"></result>
+		<result property="staff_yn" column="staff_yn"></result>
+		<result property="type" column="type"></result>
+		<result property="type_name" column="type_name"></result>						
+		<result property="notice_yn" column="notice_yn"></result>						
+		<result property="main_yn" column="main_yn"></result>						
+		<result property="wdate" column="wdate"></result>						
+		<result property="regist_date" column="regist_date"></result>						
+		<result property="thumbnail" column="thumbnail"></result>						
+		<result property="image_list" column="image_list"></result>						
+		<result property="board_cd" column="board_cd"></result>						
+		<result property="board_cd_name" column="board_cd_name"></result>						
+	</resultMap>
+    
+	<sql id="Notice.getListParam">
+		<isNotEmpty property="brand_yn">
+					AND a.brand_yn = #brand_yn#
+		</isNotEmpty>
+		<isNotEmpty property="mall_yn">
+					AND a.mall_yn = #mall_yn#
+		</isNotEmpty>
+		<isNotEmpty property="staff_yn">
+					AND a.staff_yn = #staff_yn#
+		</isNotEmpty>
+		<isNotEmpty property="brandShop">
+					AND (
+						a.brand_yn = 'Y'
+					    <isEqual property="brandShop" compareValue="Y">
+					        	OR a.staff_yn = 'Y'
+					    </isEqual>
+					    <isEqual property="brandShop" compareValue="N">
+					        	OR a.mall_yn = 'Y'
+					    </isEqual>						
+						)
+		</isNotEmpty>								
+		<isNotEmpty property="type">
+					AND (a.type = #type# or a.type = 'C')
+		</isNotEmpty>		
+		<isNotEmpty property="board_cd">
+					AND a.board_cd = #board_cd#
+		</isNotEmpty>
+		<isNotEmpty property="notice_type">
+					AND a.notice_type = #notice_type#
+		    <isNotEqual property="notice_type" compareValue="A">
+		        	AND a.wdate <![CDATA[<]]> TO_CHAR(SYSDATE , 'yyyy.mm.dd hh24:mi:ss')
+		    </isNotEqual>					
+		</isNotEmpty>		
+		<isNotEmpty property="notice_yn">
+					AND a.notice_yn = #notice_yn#
+		</isNotEmpty>
+		<isNotEmpty property="main_yn">
+					AND a.main_yn = #main_yn#
+		</isNotEmpty>						
+		<isNotEmpty property="keyword">
+		    <isEqual property="keytype" compareValue="01">
+		        	AND a.title like '%' || #keyword# || '%'
+		    </isEqual>
+		    <isEqual property="keytype" compareValue="02">
+		        	AND a.contents like '%' || #keyword# || '%'
+		    </isEqual>
+		    <isEqual property="keytype" compareValue="03">
+		        	AND (a.title like '%' || #keyword# || '%' Or a.contents like '%' || #keyword# || '%')
+		    </isEqual>		    
+   		</isNotEmpty>	
+	</sql>
+	    
+	<select id="getList" resultMap="NoticeInfo" parameterClass="Param"> 
+	     SELECT *
+		   FROM (
+				SELECT
+				<isNotEmpty property="sort">
+					<isEqual property="sort" compareValue="wdate">
+						        /*+ index_desc(a idx_notice_wdate) */
+					</isEqual>
+				</isNotEmpty>		
+				<isEmpty property="sort">
+						        /*+ index_desc(a idx_notice_site_code) */
+				</isEmpty>
+							
+				       ROWNUM rnum
+				     , a.seq
+				     , a.site_code
+				     , a.title
+				     , a.contents
+				     , a.hit
+				     , DECODE ( a.notice_type, 'N', '공지', 'I', '안내', 'A', '발표' ) notice_type_name
+				     , a.notice_type
+				     , a.type
+				     , DECODE ( a.type, 'P', 'PC', 'M', '모바일', 'C', 'PC모바일' ) type_name
+				     , a.brand_yn
+				     , a.mall_yn
+				     , staff_yn
+				     , notice_yn
+				     , main_yn
+				     , wdate
+				     , thumbnail
+				     , image_list, board_cd
+				     , (select name2 from t_code2 where code1 = '81' and code2 = a.board_cd) board_cd_name,
+				     TO_CHAR(a.regist_date, 'yyyy.mm.dd') regist_date 
+				  FROM t_notice a 
+				 WHERE a.site_code = #site_code# 
+				       AND a.seq > 0 
+				       <isEqual property="sort" compareValue="wdate">
+				       AND a.wdate > ' '
+				       </isEqual>
+				       AND a.status = 'S'
+						<include refid="Notice.getListParam"/>
+		<![CDATA[
+			        AND rownum <= #POS_END#
+		    )
+		  WHERE rnum > #POS_STA#
+		]]>
+  	</select>
+
+	<select id="getListCount" parameterClass="Param" resultClass="Integer">
+		<![CDATA[
+		 SELECT count(*)
+		   FROM t_notice a
+		  WHERE a.site_code = #site_code#
+		    AND a.status = 'S'
+		]]>
+		<include refid="Notice.getListParam"/>
+	</select>
+
+	<select id="getInfo" resultMap="NoticeInfo" parameterClass="Param">
+			SELECT /*+ index_desc(a idx_notice_site_code) */ 
+			       ROWNUM rnum
+			     , a.seq
+			     , a.site_code
+			     , a.title
+			     , a.contents
+			     , a.hit
+			     , DECODE ( a.notice_type, 'N', '공지', 'I', '안내', 'A', '발표' ) notice_type_name
+			     , a.notice_type
+			     , a.type
+			     , DECODE ( a.type, 'P', 'PC', 'M', '모바일', 'C', 'PC모바일' ) type_name
+			     , a.brand_yn
+			     , a.mall_yn
+			     , staff_yn
+			     , notice_yn
+			     , main_yn
+			     , wdate
+			     , thumbnail
+			     , image_list, board_cd
+			     , (select name2 from t_code2 where code1 = '81' and code2 = a.board_cd) board_cd_name
+			     ,TO_CHAR(a.regist_date, 'yyyy.mm.dd') regist_date 
+			  FROM t_notice a 
+			 WHERE a.site_code = #site_code# 
+			       AND a.seq > 0 
+			       AND a.status = 'S'
+			       AND a.seq = #seq#
+		<isNotEmpty property="brand_yn">
+					AND a.brand_yn = #brand_yn#
+		</isNotEmpty>
+		<isNotEmpty property="mall_yn">
+					AND a.mall_yn = #mall_yn#
+		</isNotEmpty>
+		<isNotEmpty property="staff_yn">
+					AND a.staff_yn = #staff_yn#
+		</isNotEmpty>				
+		<isNotEmpty property="notice_type">
+					AND a.notice_type = #notice_type#
+		</isNotEmpty>
+		<isNotEmpty property="notice_yn">
+					AND a.notice_yn = #notice_yn#
+		</isNotEmpty>		
+		<isNotEmpty property="main_yn">
+					AND a.main_yn = #main_yn#
+		</isNotEmpty>						
+		<isNotEmpty property="type">
+					AND (a.type = #type# or a.type = 'C')
+		</isNotEmpty>			
+	</select>
+	
+	<update id="increaseHit" parameterClass="Param">
+		UPDATE t_notice
+		SET    hit    = hit + 1
+		WHERE  seq    = #seq#
+	</update>
+
+	<select id="getPrevNext" resultClass="Param" parameterClass="Param">
+		SELECT seq, next_seq, next_title, prev_seq, prev_title   
+		FROM (
+			SELECT seq, 
+	      		LEAD(seq,1) over (order by wdate) next_seq,
+	      		LEAD(title, 1, '다음글') over (order by wdate) next_title,
+	      		LAG(seq,1) over (order by wdate ) prev_seq,
+	      		LAG(title, 1, '이전글') over (order by wdate ) prev_title
+	  		FROM t_notice a
+		       WHERE seq > 0 
+		       AND wdate > ' '	  		
+		  		AND status = 'S'
+				AND site_code = #site_code#
+				<include refid="Notice.getListParam"/>				
+	  	)	
+  		WHERE seq = #seq#
+	</select>
+</sqlMap>

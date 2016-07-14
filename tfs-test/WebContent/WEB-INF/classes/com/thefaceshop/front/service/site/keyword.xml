@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="KeyWord">
+	<cacheModel type="LRU" id="hotKeyword">
+		<flushInterval minutes="1"/>
+	</cacheModel>
+		
+
+	<select id="getList" resultClass="Param" parameterClass="Param" cacheModel="hotKeyword">
+		<![CDATA[
+		 SELECT *
+		   FROM
+		    (
+		         SELECT
+		         		/*+index_desc(a pk_search_keyword)*/
+		         	    ROWNUM rnum,
+			            a.seq,
+			            a.site_code,
+			            a.keyword,
+			            a.code,
+			            a.status,
+			            a.brand_yn, a.mall_yn, staff_yn
+		           FROM t_search_keyword a
+		          WHERE a.seq > 0
+		            AND a.status = 'S'
+		            AND a.code = #code#
+		]]>
+		<isNotEmpty property="site_code">
+					AND a.site_code = #site_code#
+		</isNotEmpty>
+		<isNotEmpty property="brand_yn">
+					AND a.brand_yn = #brand_yn#
+		</isNotEmpty>
+		<isNotEmpty property="mall_yn">
+					AND a.mall_yn = #mall_yn#
+		</isNotEmpty>
+		<isNotEmpty property="staff_yn">
+					AND a.staff_yn = #staff_yn#
+		</isNotEmpty>								
+		<![CDATA[
+			        AND rownum <= #POS_END#
+		    )
+		  WHERE rnum > #POS_STA#
+		]]>
+  	</select>
+
+
+</sqlMap>

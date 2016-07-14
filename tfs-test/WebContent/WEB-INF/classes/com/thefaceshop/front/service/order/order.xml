@@ -1,0 +1,689 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="Order">
+	<select id="generateOrderId" resultClass="String">
+		 SELECT TO_CHAR(SYSDATE, 'yyyymmddhh24miss') || LPAD(SEQ_ORDER_MASTER.NEXTVAL, 4, 0)
+		   FROM dual
+	</select>
+	
+	<insert id="insertMaster" parameterClass="Param">
+		 INSERT
+		   INTO t_order_master
+		    (
+		        orderid,
+		        site_code,
+		        mem_id,
+		        ci,
+		        di,
+		        email,
+		        name,
+		        post_no,
+		        addr1,
+		        addr2,
+		        tel1,
+		        tel2,
+		        tel3,
+		        mobile1,
+		        mobile2,
+		        mobile3,
+		        pay_type,
+		        amt,
+		        ship_amt,
+		        coupon_amt,
+		        use_point,
+		        ocb_amt,
+		        giftcard_amt,
+		        ship_sale,
+		        pay_amt,
+		        cart_coupon_amt,
+		        device_type,
+		        grade_code,
+		        cancel_yn,
+		        order_date
+		    )
+		    VALUES
+		    (
+		        #orderid#,
+		        #site_code#,
+		        #mem_id#,
+		        #ci#,
+		        #di#,
+		        #email#,
+		        #name#,
+		        #post_no#,
+		        #addr1#,
+		        #addr2#,
+		        #tel1#,
+		        #tel2#,
+		        #tel3#,
+		        #mobile1#,
+		        #mobile2#,
+		        #mobile3#,
+		        #pay_type#,
+		        #amt#,
+		        #ship_amt#,
+		        #coupon_amt#,
+		        #use_point#,
+		        #ocb_amt#,
+		        #giftcard_amt#,
+		        #ship_sale#,
+		        #pay_amt#,
+		        #cart_coupon_amt#,
+		        #device_type#,
+		        #grade_code#,
+		        'N',
+		        sysdate
+	    )
+	</insert>
+	
+	<insert id="insertShip" parameterClass="Param">
+		 INSERT
+		   INTO t_order_ship
+		    (
+		        orderid,
+		        ship_seq,
+		        channel_code,
+		        status,
+		        name,
+		        post_no,
+		        addr1,
+		        addr2,
+		        tel1,
+		        tel2,
+		        tel3,
+		        mobile1,
+		        mobile2,
+		        mobile3,
+		        ship_memo,
+		        admin_memo,
+		        ship_amt,
+		        ship_sale,
+		        return_yn,
+		        org_orderid,
+		        org_ship_seq,
+		        return_reason_code,
+		        return_reason,
+		        sap_return_reason_code,
+		        cancel_yn,
+		        update_date
+		    )
+		    VALUES
+		    (
+		        #orderid#,
+		        #ship_seq#,
+		        #channel_code#,
+		        #status#,
+		        #name#,
+		        #post_no#,
+		        #addr1#,
+		        #addr2#,
+		        #tel1#,
+		        #tel2#,
+		        #tel3#,
+		        #mobile1#,
+		        #mobile2#,
+		        #mobile3#,
+		        #ship_memo#,
+		        #admin_memo#,
+		        #ship_amt#,
+		        #ship_sale#,
+		        #return_yn#,
+		        #org_orderid#,
+		        #org_ship_seq#,
+		        #return_reason_code#,
+		        #return_reason#,
+		        #sap_return_reason_code#,
+		        'N',
+		        SYSDATE
+		    )
+	</insert>
+	
+	<insert id="insertStatusLog" parameterClass="Param">
+		 INSERT
+		   INTO t_order_status_log
+			    (
+			        orderid,
+			        ship_seq,
+			        seq,
+			        status,
+			        note,
+			        adminid,
+			        regist_date
+			    )
+		    VALUES
+			    (
+			        #orderid#,
+			        #ship_seq#,
+			        (
+			             SELECT NVL(MAX(seq), 0) + 1
+			               FROM t_order_status_log
+			              WHERE orderid  = #orderid#
+			                AND ship_seq = #ship_seq#
+			        )
+			        ,
+			        #status#,
+			        #note#,
+			        #adminid#,
+			        SYSDATE
+			    ) 	
+	</insert>
+
+	<insert id="insertItem" parameterClass="Param">
+		 INSERT
+		   INTO t_order_item
+		    (
+		        orderid,
+		        ship_seq,
+		        item_seq,
+		        dpid,
+		        sub_dpid,
+		        pserial,
+		        price,
+		        qty,
+		        coupon_amt,
+		        apply_price,
+		        grant_point,
+		        grant_ocb,
+		        sap_yn,
+		        org_item_seq,
+		        item_categ,
+		        dlvschduse,
+		        rel_dpid,
+		        dpname,
+		        sub_dpname,
+		        rel_dpname
+		    )
+		    VALUES
+		    (
+		        #orderid#,
+		        #ship_seq#,
+			<isNotEmpty property="item_seq">
+		        #item_seq#,
+			</isNotEmpty>
+			<isEmpty property="item_seq">
+				(SELECT NVL(MAX(item_seq), 0) + 1 FROM t_order_item WHERE orderid = #orderid# AND ship_seq = #ship_seq#),
+			</isEmpty>		        
+		        #dpid#,
+		        #sub_dpid#,
+		        #pserial#,
+		        #price#,
+		        #qty#,
+		        #coupon_amt#,
+		        #apply_price#,
+		        #grant_point#,
+		        #grant_ocb#,
+		        'N',
+		        #org_item_seq#,
+		        #item_categ#,
+		        #dlvschduse#,
+		        #rel_dpid#,
+		        (SELECT title_s FROM t_product_display WHERE dpid = #dpid#),
+		        (SELECT title_s FROM t_product_display WHERE dpid = #sub_dpid#),
+		        (SELECT title_s FROM t_product_display WHERE dpid = #rel_dpid#)
+		    )
+	</insert>
+	
+	<select id="getGiftListForItem" parameterClass="Param" resultClass="Param">
+		 SELECT a.gift_dpid dpid,
+			    b.pserial,
+			    SUM(a.gift_qty) qty
+		   FROM t_order_gift a,
+			    t_product_display b
+		  WHERE a.gift_dpid = b.dpid
+		    AND a.orderid   = #orderid#
+		    AND a.ship_seq  = #ship_seq#
+		GROUP BY a.gift_dpid, b.pserial
+	</select>
+	
+	<insert id="insertGift" parameterClass="Param">
+		 INSERT
+		   INTO t_order_gift
+		    (
+		        orderid,
+		        ship_seq,
+		        seq,
+		        gift_dpid,
+		        gift_qty,
+		        gift_seq,
+		        dpid,
+		        coupon_seq
+		    )
+		    VALUES
+		    (
+		        #orderid#,
+		        #ship_seq#,
+				(SELECT NVL(MAX(seq), 0) + 1 FROM t_order_gift WHERE orderid = #orderid# AND ship_seq = #ship_seq#),
+		        #gift_dpid#,
+		        #gift_qty#,
+		        #gift_seq#,
+		        #dpid#,
+		        #coupon_seq#
+		    )
+	</insert>
+	
+	<select id="getInfo" resultClass="Param" parameterClass="String">
+		 SELECT o.orderid,
+			    o.site_code,
+			    o.mem_id,
+			    o.ci,
+			    o.di,
+			    o.email,
+			    o.name,
+			    o.post_no,
+			    o.addr1,
+			    o.addr2,
+			    o.tel1,
+			    o.tel2,
+			    o.tel3,
+			    o.mobile1,
+			    o.mobile2,
+			    o.mobile3,
+			    o.pay_type,
+			    a.name2 pay_type_name,
+			    o.amt,
+			    o.ship_amt,
+			    o.coupon_amt,
+			    o.use_point,
+			    o.ocb_amt,
+			    o.giftcard_amt,
+			    o.ship_sale,
+			    o.pay_amt,
+			    o.cart_coupon_amt,
+			    o.device_type,
+			    o.grade_code,
+			    TO_CHAR(o.order_date, 'yyyy.mm.dd hh24:mi:ss') order_date,
+			    TO_CHAR(o.order_date + 7, 'yyyy.mm.dd') confirm_date,
+			    TO_CHAR(sysdate, 'yyyy.mm.dd hh24:mi:ss') mail_send_date
+		   FROM t_order_master o,
+			    t_code2 a
+		  WHERE o.pay_type=a.code2
+		    AND a.code1   = '21'
+		    AND orderid   = #value#
+   	</select>
+	
+	<select id="getShipInfo" resultClass="Param" parameterClass="Param">
+		 SELECT s.*, company.ship_company_code, company.ship_company_name, company.ship_company_url,
+			    a.fe_name status_name
+		   FROM t_order_ship s,
+		   		t_ship_company_code company,
+			    t_order_status_code a
+		  WHERE s.status = a.status
+		    AND s.ship_company_code = company.ship_company_code (+)
+		    AND orderid  = #orderid#
+		    AND ship_seq = #ship_seq#
+	</select>
+	
+	<select id="getItems" resultClass="Param" parameterClass="Param">
+		 SELECT i.orderid,
+			    i.ship_seq,
+			    i.item_seq,
+			    i.dpid,
+			    i.sub_dpid,
+			    i.pserial,
+			    i.price,
+			    i.qty,
+	            i.return_qty,
+	            i.noapply_qty,
+	            (i.qty - nvl(i.return_qty, 0) + i.noapply_qty) exists_qty, 
+			    i.coupon_amt,
+			    i.grant_point,
+			    f_product_image(i.dpid, '05') image,
+			    dp.title_s pname,
+			    i.rel_dpid,
+			    i.cancel_status,
+	            DECODE (i.rel_dpid, '', '',
+	            (
+	                 SELECT title
+	                   FROM t_product_option
+	                  WHERE dpid     = i.rel_dpid
+	                    AND opt_dpid = i.dpid
+	            )
+	            ) opt_name			    
+		   FROM t_order_item i,
+			    t_product_display dp
+		  WHERE i.dpid         = dp.dpid
+		    AND i.orderid      = #orderid#
+		    AND i.ship_seq     = #ship_seq#
+		  ORDER BY i.item_seq
+	</select>
+	
+	<select id="getGrantOcb" resultClass="Integer" parameterClass="String">
+		SELECT NVL(sum(grant_ocb * (qty - nvl(return_qty, 0) + noapply_qty) / qty), 0) 
+		  FROM t_order_item 
+		 WHERE orderid = #value#
+		   AND cancel_status IS NULL
+	</select>
+	
+	<select id="getList" resultClass="Param" parameterClass="Param">  
+		 SELECT *
+		   FROM
+		    (
+		         SELECT dense_rank() over (order by o.orderid DESC) rnum,
+		         		row_number() over (partition by item.orderid order by item_seq) item_num,
+		         		count(*) over (partition by item.orderid) item_cnt,
+			            SUM(DECODE(item.cancel_status, NULL, 0, 1)) over (partition BY item.orderid) cancel_cnt,
+            			SUM(DECODE(item.cancel_status, NULL, item.qty - nvl(item.return_qty, 0) + item.noapply_qty, 0)) over (partition BY item.orderid) all_exists_qty,
+            			SUM(DECODE(item.cancel_status, NULL, item.qty - nvl(item.return_qty, 0), 0)) over (partition BY item.orderid) return_exists_qty,
+			            o.orderid,
+			            TO_CHAR(o.order_date, 'yyyy.mm.dd') order_date,
+			            o.pay_type,
+			            p.name2 pay_type_name,
+			            o.pay_amt,
+			            item.dpid,
+			            item.dpname,
+			            f_product_image(item.dpid, '05') image,
+			            item.price,
+			            item.qty,
+			            item.return_qty,
+			            item.noapply_qty, 
+			            item.cancel_status,
+			            (item.qty - nvl(item.return_qty, 0) + item.noapply_qty) exists_qty, 
+			            ship.status,
+			            ship.invoice_no,
+			            ship.return_yn,
+			            status.fe_name status_name,
+			            item.rel_dpid,
+			            DECODE (item.rel_dpid, '', '',
+			            (
+			                 SELECT title
+			                   FROM t_product_option
+			                  WHERE dpid     = item.rel_dpid
+			                    AND opt_dpid = item.dpid
+			            )
+			            ) opt_name,
+					    CASE
+					        WHEN ship.status     = '60'
+					            AND o.order_date > add_months(sysdate, -3)
+					        THEN
+					            (
+					                 SELECT COUNT(*)
+					                   FROM t_product_review
+					                  WHERE orderid = o.orderid
+					                    AND dpid    = item.dpid
+					            )
+					        ELSE 1
+					    END review_cnt,
+					    (
+					         SELECT DECODE(COUNT(*), 0, 'N', 'Y')
+					           FROM t_order_return_request
+					          WHERE orderid		= o.orderid
+					            AND ship_seq	= ship.ship_seq
+					    ) return_request_yn,
+					    ship.ship_company_code,    
+					    company.ship_company_name,
+					    company.ship_company_url
+		           FROM t_order_master o,
+			            t_order_ship ship,
+			            t_order_item item,
+			            t_ship_company_code company,
+			            t_order_status_code status,
+			            t_code2 p
+		          WHERE o.orderid     = ship.orderid
+		            AND ship.orderid  = item.orderid
+		            AND ship.ship_seq = item.ship_seq
+		            AND ship.status   = status.status
+		            AND ship.ship_company_code = company.ship_company_code (+)
+		            AND o.pay_type    = p.code2
+		            AND p.code1       = '21'
+		            AND ship.ship_seq = 1
+		            AND item.dpid = item.sub_dpid
+		            AND
+		            (
+		            	(
+			            	o.pay_type <![CDATA[<]]>> '98' AND (
+				                item.dpid LIKE 'A%'
+				                OR item.dpid LIKE 'S%'
+			                )
+		            	)
+		                OR
+		                (
+			            	o.pay_type = '98' AND (
+				                item.dpid LIKE 'G%'
+			                )		                
+		                )
+		            )
+		            <isNotEmpty property="mem_id">
+		            AND o.mem_id = #mem_id#
+		            </isNotEmpty>
+		            <isEqual property="type" compareValue="ing">
+		            AND ship.status IN ('09', '10', '13', '15', '17', '18', '30', '53') 
+		            AND ship.return_yn = 'N'
+		            AND ship.org_orderid IS NULL
+		            </isEqual>
+		            <isEqual property="type" compareValue="normal">
+		            AND ship.status IN ('09', '10', '13', '15', '17', '18', '30', '53', '60')
+		            AND ship.return_yn = 'N'
+		            AND ship.org_orderid IS NULL
+		            </isEqual>
+		            <isEqual property="type" compareValue="return">
+		            AND ship.status IN ('11', '19', '20', '21', '22', '23', '50', '51')
+		            </isEqual>
+		            <isEqual property="type" compareValue="request">
+		            AND ship.status IN ('09', '10', '13', '15', '30', '17', '18', '53')
+		            </isEqual>
+		            <isEqual property="type" compareValue="nomember">
+		            AND o.orderid = #orderid#
+		            AND o.mem_id IS NULL
+		            <isNotEmpty property="mobile1">
+		            AND 
+		            (
+		            	(
+			            	o.mobile1 = #mobile1# AND 
+			            	o.mobile2 = #mobile2# AND 
+			            	o.mobile3 = #mobile3#
+		            	)
+		            	OR
+		            	(
+			            	ship.mobile1 = #mobile1# AND 
+			            	ship.mobile2 = #mobile2# AND 
+			            	ship.mobile3 = #mobile3#
+		            	)
+		            )
+		            </isNotEmpty>
+		            <isNotEmpty property="mobile">
+		            AND 
+		            (
+		            	(
+			            	o.mobile1 || o.mobile2 || o.mobile3 = #mobile#
+		            	)
+		            	OR
+		            	(
+			            	ship.mobile1 || ship.mobile2 || ship.mobile3 = #mobile#
+		            	)
+		            )
+		            </isNotEmpty>
+		            </isEqual>
+		            <isNotEmpty property="start_date">
+		            AND o.order_date >= TO_DATE(#start_date#, 'yyyy.mm.dd')
+		            </isNotEmpty>
+		            <isNotEmpty property="end_date">
+		            AND o.order_date <![CDATA[<]]> TO_DATE(#end_date#, 'yyyy.mm.dd') + 1
+		            </isNotEmpty>
+		       ORDER BY o.orderid DESC, item.item_seq
+		    )
+		  WHERE rnum <![CDATA[<]]>= #POS_END#
+		    AND rnum > #POS_STA#	
+	</select>
+		
+	<select id="getListCount" resultClass="Integer" parameterClass="Param">
+		         SELECT COUNT(*)
+		           FROM t_order_master o,
+		            t_order_ship ship,
+		            t_order_status_code status
+		          WHERE o.orderid     = ship.orderid
+		            AND ship.status   = status.status
+		            AND ship.ship_seq = 1
+		            AND o.mem_id = #mem_id#
+		            <isEqual property="type" compareValue="ing">
+		            AND ship.status IN ('09', '10', '13', '15', '17', '18', '30', '53')
+		            AND ship.return_yn = 'N'
+		            AND ship.org_orderid IS NULL
+		            </isEqual>
+		            <isEqual property="type" compareValue="normal">
+		            AND ship.status IN ('09', '10', '13', '15', '17', '18', '30', '53', '60')
+		            AND ship.return_yn = 'N'
+		            AND ship.org_orderid IS NULL
+		            </isEqual>
+		            <isEqual property="type" compareValue="return">
+		            AND ship.status IN ('11', '19', '20', '21', '22', '23', '50', '51')
+		            </isEqual>
+		            <isEqual property="type" compareValue="request">
+		            AND ship.status IN ('09', '10', '13', '15', '30', '17', '18', '53')
+		            </isEqual>
+		            <isEqual property="type" compareValue="nomember">
+		            AND o.orderid = #orderid#
+		            AND o.mem_id IS NULL
+		            <isNotEmpty property="mobile1">
+		            AND 
+		            (
+		            	(
+			            	o.mobile1 = #mobile1# AND 
+			            	o.mobile2 = #mobile2# AND 
+			            	o.mobile3 = #mobile3#
+		            	)
+		            	OR
+		            	(
+			            	ship.mobile1 = #mobile1# AND 
+			            	ship.mobile2 = #mobile2# AND 
+			            	ship.mobile3 = #mobile3#
+		            	)
+		            )
+		            </isNotEmpty>
+		            <isNotEmpty property="mobile">
+		            AND 
+		            (
+		            	(
+			            	o.mobile1 || o.mobile2 || o.mobile3 = #mobile#
+		            	)
+		            	OR
+		            	(
+			            	ship.mobile1 || ship.mobile2 || ship.mobile3 = #mobile#
+		            	)
+		            )
+		            </isNotEmpty>
+		            </isEqual>
+		            <isNotEmpty property="start_date">
+		            AND o.order_date >= TO_DATE(#start_date#, 'yyyy.mm.dd')
+		            </isNotEmpty>
+		            <isNotEmpty property="end_date">
+		            AND o.order_date <![CDATA[<]]> TO_DATE(#end_date#, 'yyyy.mm.dd') + 1
+		            </isNotEmpty>
+	</select>
+	
+	
+	<procedure id="changeOrderStatus" parameterClass="Param">
+		{call p_change_order_status(#orderid#, #ship_seq#, #status#, #adminid#)}
+	</procedure>
+	
+	<select id="getTotalGrantPoint" resultClass="Integer" parameterClass="String">
+		SELECT SUM(grant_point)
+		  FROM t_order_item
+		 WHERE orderid = #value#
+	</select>
+	
+	<select id="isCancelable" parameterClass="Param" resultClass="Integer">
+		 SELECT COUNT(*)
+		   FROM t_order_ship ship
+		  WHERE ship.orderid  = #orderid#
+		    AND ship.ship_seq = #ship_seq#
+		    AND ship.status  IN ('09', '10', '13', '15', '30')
+   	</select>
+   	
+	<select id="getItemsForWMS" resultClass="Param" parameterClass="Param">
+		 SELECT o.orderid,
+			    (
+			         SELECT COUNT(*)
+			           FROM t_order_item
+			          WHERE orderid  = o.orderid
+			            AND ship_seq = ship.ship_seq
+			            AND pserial <![CDATA[<>]]> 'SET'
+			    )
+			    item_cnt,
+			    o.site_code,
+			    site.name site_name,
+			    ship.channel_code,
+			    channel.name channel_name,
+			    TO_CHAR(o.order_date, 'YYYYMMDDHH24MISS') order_date,
+			    o.mem_id userid,
+			    o.name orderer_name,
+			    o.post_no orderer_post_no,
+			    o.addr1 orderer_addr1,
+			    o.addr2 orderer_addr2,
+			    o.tel1 || '-' || o.tel2 || '-' || o.tel3 orderer_tel,
+			    o.mobile1 || '-' || o.mobile2 || '-' || o.mobile3 orderer_mobile,
+			    ship.name recipient_name,
+			    ship.post_no recipient_post_no,
+			    ship.addr1 recipient_addr1,
+			    ship.addr2 recipient_addr2,
+			    ship.tel1 || '-' || ship.tel2 || '-' || ship.tel3 recipient_tel,
+			    ship.mobile1 || '-' || ship.mobile2 || '-' || ship.mobile3 recipient_mobile,
+			    ship.ship_memo,
+			    ship.admin_memo,
+			    '' card_memo,
+			    '' card_sender,
+			    '' card_recipient,
+			    item.item_seq,
+			    item.pserial,
+			    case when item.dpid = item.sub_dpid then
+			        item.dpname
+			    else
+			        item.sub_dpname
+			    end pname,
+			    case when item.dpid = item.sub_dpid then
+			        ''
+			    else
+			        item.dpid
+			    end set_dpid,
+			    case when item.dpid = item.sub_dpid then
+			        ''
+			    else
+			        item.dpname
+			    end dpname,
+			    item.qty,
+			    item.price org_price,
+			    item.apply_price,
+			    ship.org_orderid,
+			    item.org_item_seq,
+			    ship.return_reason_code,
+			    ship.return_reason
+		   FROM t_order_master o,
+			    t_order_ship ship,
+			    t_order_item item,
+			    t_site site,
+			    t_channel channel
+		  WHERE o.orderid         = ship.orderid
+		    AND ship.orderid      = item.orderid
+		    AND ship.ship_seq     = item.ship_seq
+		    AND o.site_code       = site.site_code
+		    AND ship.channel_code = channel.channel_code
+		    AND ship.ship_seq     = 1
+		    AND pserial <![CDATA[<>]]> 'SET'
+		    <isEqual property="order_type" compareValue="10">
+		    AND ship.status = '10'
+		    AND ship.org_orderid IS NULL<!-- 반품 진행중인 주문이 아니어야 한다 -->
+		    </isEqual>
+		    <isEqual property="order_type" compareValue="11">
+		    AND ship.status IN ('10', '13', '19')
+		    AND ship.org_orderid IS NULL<!-- 반품 진행중인 주문이 아니어야 한다 -->
+		    </isEqual>
+		    <isEqual property="order_type" compareValue="50">
+		    AND ship.status IN ('17', '18', '53')
+		    AND ship.org_orderid IS NULL<!-- 반품 진행중인 주문이 아니어야 한다 -->
+		    </isEqual>
+		    <isNotEmpty property="orderid_list">
+				<iterate prepend="AND" property="orderid_list" conjunction="," open=" ship.orderid IN (" close=")" >
+		    	#orderid_list[]#
+				</iterate>
+		    </isNotEmpty>
+	</select>
+	
+	<parameterMap id="paramProperOrder" class="java.util.Map">
+		<parameter property="p_orderid" javaType="java.lang.String" jdbcType="VARCHAR" mode="IN" />
+		<parameter property="p_proper_yn" javaType="java.lang.String" jdbcType="VARCHAR" mode="OUT" />
+	</parameterMap>		
+	<procedure id="properOrder" parameterMap="paramProperOrder">
+		{call p_proper_order(?, ?)}
+	</procedure>
+	
+</sqlMap>

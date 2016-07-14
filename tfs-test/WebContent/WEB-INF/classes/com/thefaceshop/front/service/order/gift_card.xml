@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="GiftCard">
+	<insert id="insertLog" parameterClass="Param">
+		INSERT INTO t_giftcard_new_log
+		(
+			orderid,
+			seq,
+			type,
+			member_code,
+			member_id,
+			result_code,
+			pg_controll_code,
+			controll_code,
+			amount,
+			scrach_no,
+			cert_type,
+			face_value,
+			balance,
+			receipt_id,
+			regist_date,
+			regist_time,
+			error_message
+		)
+		VALUES
+		(
+			#orderid#,
+			(
+				SELECT NVL(MAX(seq), 0) + 1 
+				  FROM t_giftcard_new_log 
+				 WHERE orderid = #orderid#
+			),
+			#type#,
+			#member_code#,
+			#member_id#,
+			#result_code#,
+			#pg_controll_code#,
+			#controll_code#,
+			#amount#,
+			#scrach_no#,
+			#cert_type#,
+			#face_value#,
+			#balance#,
+			#receipt_id#,
+			#regist_date#,
+			#regist_time#,
+			#error_message#
+		)
+	</insert>
+	
+	<select id="getCancelList" resultClass="Param" parameterClass="String">
+		 SELECT a.member_code,
+		 		a.member_id,
+		 		a.pg_controll_code,
+		        a.controll_code,
+		        a.amount,
+		        a.scrach_no
+		   FROM t_giftcard_new_log a
+		  WHERE a.orderid     = #value#
+		    AND a.type        ='U'
+		    AND a.result_code = '0000'
+	</select>
+	
+	<select id="getReceiptId" resultClass="String" parameterClass="String">
+		 SELECT receipt_id
+		   FROM t_giftcard_new_log
+		  WHERE orderid = #value#
+		    AND type    = 'U'
+		    AND rownum  = 1
+	</select>
+</sqlMap>

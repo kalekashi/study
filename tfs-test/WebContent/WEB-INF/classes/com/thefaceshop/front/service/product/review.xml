@@ -1,0 +1,697 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="Review">
+	<resultMap id="ReviewList" class="Param">
+		<result property="review_seq" column="review_seq"></result>
+		<result property="dpid" column="dpid"></result>
+		<result property="rel_dpid" column="rel_dpid"></result>
+		<result property="orderid" column="orderid"></result>
+		<result property="score" column="score"></result>
+		<result property="title" column="title"></result>
+		<result property="contents" column="contents" jdbcType="CLOB" javaType="java.lang.String"></result>
+		<result property="hit" column="hit"></result>
+		<result property="best_yn" column="best_yn"></result>
+		<result property="main_yn" column="main_yn"></result>
+		<result property="block_yn" column="block_yn"></result>
+		<result property="tester_yn" column="tester_yn"></result>
+		<result property="best_rank" column="best_rank"></result>
+		<result property="status" column="status"></result>
+		<result property="mem_id" column="mem_id"></result>
+		<result property="regist_date" column="regist_date"></result>
+		<result property="title_s" column="title_s"></result>
+		<result property="product_image_name" column="product_image_name"></result>
+		<result property="image_name" column="image_name"></result>
+		<result property="cate_name" column="cate_name"></result>
+		<result property="type" column="type"></result>		
+		<result property="device_type" column="device_type"></result>		
+		<result property="age" column="age"></result>		
+		<result property="recommend" column="recommend"></result>		
+	</resultMap>
+	
+	<sql id="Review.getListParam">
+		<isNotEmpty property="dpid">
+			<isEqual property="optionYn" compareValue="Y">
+		             AND review.dpid IN
+		             (
+		                SELECT opt_dpid FROM T_PRODUCT_OPTION
+		                 WHERE dpid = #dpid#              
+		             )
+		    </isEqual>
+		    <isEqual property="optionYn" compareValue="N">
+		    		AND review.dpid =  #dpid#
+		    </isEqual>		             
+		</isNotEmpty>		
+		<isNotEmpty property="mem_id">
+					AND review.mem_id = #mem_id#
+		</isNotEmpty>
+		<isNotEmpty property="keyword">
+		    <isEqual property="keytype" compareValue="01">
+		        	AND review.title like '%' || #keyword# || '%'
+		    </isEqual>
+		    <isEqual property="keytype" compareValue="02">
+		        	AND review.contents like '%' || #keyword# || '%'
+		    </isEqual>
+		    <isEqual property="keytype" compareValue="03">
+		        	AND (
+		        	  review.title like '%' || #keyword# || '%'
+		        	  or review.contents like '%' || #keyword# || '%'	
+   			          or display.title_s LIKE '%' || #keyword# || '%' 
+                      OR display.title_l LIKE '%' || #keyword# || '%' 
+                      OR display.summary LIKE '%' || #keyword# || '%' 
+                      OR display.tag LIKE '%' || #keyword# || '%'
+                     ) 		        	
+		    </isEqual>		    
+   		</isNotEmpty>
+		<isNotEmpty property="best_yn">
+					AND review.best_yn = #best_yn#
+		</isNotEmpty>
+		<isNotEmpty property="main_yn">
+					AND review.main_yn = #main_yn#
+		</isNotEmpty>		
+		<isNotEmpty property="type">
+					AND review.type = #type#
+		</isNotEmpty>
+	</sql>	
+    
+	<select id="getList" resultMap="ReviewList" parameterClass="Param">
+	     SELECT *
+		   FROM (
+				 SELECT
+					<isNotEmpty property="sort">
+						<isEqual property="sort" compareValue="recommend">
+							        ROW_NUMBER() OVER (ORDER BY review.RECOMMEND desc, review.review_seq DESC) rnum,
+						</isEqual>
+					</isNotEmpty>		
+					<isEmpty property="sort">
+		        					ROW_NUMBER() OVER (ORDER BY review.review_seq DESC) rnum,
+					</isEmpty>				  
+			<![CDATA[				 
+					    review.review_seq,
+					    review.dpid,
+                        review.rel_dpid,
+					    review.orderid,
+					    review.score,
+					    review.title,
+					    review.contents,
+					    review.hit,
+					    review.best_yn,
+					    review.main_yn,
+					    review.block_yn,
+					    review.tester_yn,
+					    review.best_rank,
+					    review.status,
+					    review.mem_id,
+                        review.TYPE, review.DEVICE_TYPE, review.RECOMMEND, 
+					    TO_CHAR(review.regist_date, 'yyyy.mm.dd') regist_date, age,
+					    nvl((SELECT image_name FROM t_product_review_image WHERE review_seq = review.REVIEW_SEQ AND ROWNUM = 1), thumbnail) image_name,
+					    display.title_s,
+					    (
+					         SELECT
+						            /*+index(t_product_image pk_product_image)*/
+						            image_path || image_name
+					           FROM t_product_image
+					          WHERE dpid       = review.dpid
+					            AND image_code = '05'
+					            AND ROWNUM     = 1
+					    )
+					    product_image_name,
+                        (
+                         SELECT cate_name
+                           FROM t_cate
+                          WHERE site_code         = #site_code#
+                            AND status            = 'S'
+                            AND block_yn          = 'N'
+                            AND LEVEL             = 2
+                            START WITH cate_seq   = cate.CATE_SEQ
+                            CONNECT BY prior p_cate_seq = cate_seq
+                            AND ROWNUM = 1                        
+                        ) cate_name
+				   FROM t_product_review review, 
+				        t_product_display display, 
+					    t_product_cate cate
+		     	WHERE review.dpid = display.dpid
+                    AND display.SITE_CODE = #site_code#
+				    AND review.DPID = cate.DPID 
+				    AND review.status     = 'S'
+				    AND review.block_yn   = 'N'
+                    AND display.status     = 'S'
+                    and review.review_seq > 0
+                    and review.recommend >= 0
+                    AND cate.cate_seq  IN
+                        (
+                             SELECT cate_seq
+                               FROM t_cate
+                              WHERE site_code             = #site_code#
+                                AND status                = 'S'
+                                START WITH cate_seq       = #cate_seq#
+                                CONNECT BY prior cate_seq = p_cate_seq
+                        )		
+		]]>
+		<include refid="Review.getListParam"/>		
+		<![CDATA[
+		    )
+		  WHERE rnum > #POS_STA#
+	        AND rnum <= #POS_END#
+		]]>
+  	</select>
+
+	<select id="getListCount" parameterClass="Param" resultClass="Integer">
+		<![CDATA[
+			 SELECT COUNT(*)
+			   FROM t_product_review review, 
+			        t_product_display display, 
+				    t_product_cate cate
+	     	WHERE review.dpid = display.dpid
+                   AND display.SITE_CODE = #site_code#
+			    AND review.DPID = cate.DPID 
+			    AND review.status     = 'S'
+			    AND review.block_yn   = 'N'
+                AND display.status     = 'S'
+                AND cate.cate_seq  IN
+                    (
+                         SELECT cate_seq
+                           FROM t_cate
+                          WHERE site_code             = #site_code#
+                            AND status                = 'S'
+                            START WITH cate_seq       = #cate_seq#
+                            CONNECT BY prior cate_seq = p_cate_seq
+                    )		
+		]]>
+		<include refid="Review.getListParam"/>	
+	</select>
+
+	<resultMap id="ReviewInfo" class="Param">
+		<result property="review_seq" column="review_seq"></result>
+		<result property="dpid" column="dpid"></result>
+		<result property="rel_dpid" column="rel_dpid"></result>
+		<result property="orderid" column="orderid"></result>
+		<result property="score" column="score"></result>
+		<result property="title" column="title"></result>
+		<result property="contents" column="contents" jdbcType="CLOB" javaType="java.lang.String"></result>
+		<result property="hit" column="hit"></result>
+		<result property="best_yn" column="best_yn"></result>
+		<result property="main_yn" column="main_yn"></result>
+		<result property="block_yn" column="block_yn"></result>
+		<result property="tester_yn" column="tester_yn"></result>
+		<result property="best_rank" column="best_rank"></result>
+		<result property="status" column="status"></result>
+		<result property="mem_id" column="mem_id"></result>
+		<result property="regist_date" column="regist_date"></result>
+		<result property="title_s" column="title_s"></result>
+		<result property="product_image_name" column="product_image_name"></result>
+		<result property="image_name" column="image_name"></result>
+		<result property="cate_name" column="cate_name"></result>
+		<result property="type" column="type"></result>		
+		<result property="device_type" column="device_type"></result>		
+		<result property="age" column="age"></result>	
+		<result property="recommend" column="recommend"></result>			
+	</resultMap>
+    
+	<select id="getInfo" resultMap="ReviewInfo" parameterClass="Param">
+		 SELECT review.review_seq,
+			ROW_NUMBER() OVER (ORDER BY review.review_seq DESC) rnum,
+			    review.review_seq,
+			    review.dpid,
+                review.rel_dpid,
+			    review.orderid,
+			    review.score,
+			    review.title,
+			    review.contents,
+			    review.hit,
+			    review.best_yn,
+			    review.main_yn,
+			    review.block_yn,
+			    review.tester_yn,
+			    review.best_rank,
+			    review.status,
+			    review.mem_id,
+                review.TYPE, review.DEVICE_TYPE, review.RECOMMEND, age,
+			    TO_CHAR(review.regist_date, 'yyyy.mm.dd') regist_date,
+			    nvl((SELECT image_name FROM t_product_review_image WHERE review_seq = review.REVIEW_SEQ AND ROWNUM = 1), thumbnail) image_name,
+			    display.title_s,
+			    (
+			         SELECT
+				            /*+index(t_product_image pk_product_image)*/
+				            image_path || image_name
+			           FROM t_product_image
+			          WHERE dpid       = review.dpid
+			            AND image_code = '05'
+			            AND ROWNUM     = 1
+			    )
+			    product_image_name,
+                      (
+                       SELECT cate_name
+                         FROM t_cate
+                        WHERE site_code         = #site_code#
+                          AND status            = 'S'
+                          AND LEVEL             = 2
+                          START WITH cate_seq   = cate.CATE_SEQ
+                          CONNECT BY prior p_cate_seq = cate_seq
+                          AND ROWNUM = 1                        
+                      ) cate_name
+		   FROM t_product_review review, 
+		        t_product_display display, 
+			    t_product_cate cate
+     	WHERE review.dpid = display.dpid
+            AND display.SITE_CODE = #site_code#
+		    AND review.DPID = cate.DPID 
+		    AND review.status     = 'S'
+		    AND review.block_yn     = 'N'
+                  AND display.status     = 'S'
+                  AND cate.cate_seq  IN
+                      (
+                           SELECT cate_seq
+                             FROM t_cate
+                            WHERE site_code             = #site_code#
+                              AND status                = 'S'
+                              START WITH cate_seq       = #cate_seq#
+                              CONNECT BY prior cate_seq = p_cate_seq
+                      )	
+		    AND review.review_seq = #review_seq#
+		    AND ROWNUM = 1
+	</select>
+	
+	<select id="getNextSeq" resultClass="Integer">
+		 SELECT seq_product_review.NEXTVAL
+		   FROM dual
+	</select>
+
+	<insert id="insert" parameterClass="Param">
+		 INSERT
+		   INTO t_product_review
+		    (
+		        review_seq,
+		        dpid,
+		        rel_dpid,
+		        orderid,
+		        score,
+		        title,
+		        contents,
+		        status,
+		        hit,
+		        best_yn,
+		        main_yn,
+		        block_yn,
+			    brand_yn,
+			    mall_yn,
+			    staff_yn,
+			    type, 	
+			    device_type,	        
+		        mem_id,
+		        age, 
+		        regist_date
+		    )
+		    VALUES
+		    (
+		        #review_seq#,
+		        #dpid#,
+		        #rel_dpid#,
+		        #orderid#,
+		        #score#,
+		        #title#,
+		        #contents#,
+		        'S',
+		        0,
+		        'N',
+		        'N',
+		        'N',
+			    NVL(#brand_yn#, 'N'),
+			    NVL(#mall_yn#, 'N'),
+			    NVL(#staff_yn#, 'N'),	
+			    #type#,		
+			    #device_type#,
+		        #mem_id#,
+		        #age#,
+		        SYSDATE
+		    )
+	</insert>
+	
+
+	<update id="update" parameterClass="Param">
+		UPDATE t_product_review
+		SET    dpid          = #dpid#,
+			   rel_dpid      = #rel_dpid#,
+		       score         = #score#,
+		       title         = #title#,
+		       contents      = #contents#
+		WHERE  review_seq    = #review_seq#
+		AND    mem_id = #mem_id#
+	</update>
+	
+	<update id="delete" parameterClass="Param">
+		UPDATE t_product_review
+		SET    status = 'D'
+		WHERE  review_seq = #review_seq#
+		AND    mem_id = #mem_id#
+	</update>
+
+	<update id="increaseHit" parameterClass="Integer">
+		UPDATE t_product_review
+		SET    hit = hit + 1
+		WHERE  review_seq = #value#
+	</update>
+
+	<select id="getImageList" resultClass="Param" parameterClass="Integer">
+		 SELECT *
+		   FROM t_product_review_image
+		  WHERE review_seq = #value#
+	</select>
+	
+	<delete id="deleteImage" parameterClass="Integer">
+		DELETE t_product_review_image
+		 WHERE review_seq = #value#
+	</delete>
+
+	<insert id="insertImage" parameterClass="Param">
+		 INSERT
+		   INTO t_product_review_image
+		    (
+		        review_seq,
+		        image_seq,
+		        image_name
+		    )
+		    VALUES
+		    (
+		        #review_seq#,
+		        seq_product_review_image.NEXTVAL,
+		        #image_name#
+		    )
+	</insert>
+	
+	<select id="getFeatureList" resultClass="Param" parameterClass="String">
+		<![CDATA[
+		SELECT a.review_seq, a.code1, a.code2, b.name2, a.rank FROM T_review_feature a, t_code2 b
+		WHERE a.code1 = b.code1
+		  AND a.code2 = b.code2
+		  AND b.status = 'S'
+		  and review_seq = #review_seq#
+		  AND a.RANK > 0 
+		  order by a.rank
+		]]>
+	</select>	
+	
+	<delete id="deleteFeature" parameterClass="String">
+		 DELETE FROM t_review_feature
+		 WHERE review_seq = #review_seq#
+	</delete>		
+	
+	<insert id="insertFeature" parameterClass="Param">
+		 INSERT
+		   INTO t_review_feature
+		    (
+		        review_seq,
+		        rank,
+		        code1,
+		        code2,
+		        wdate
+		    )
+		    (
+            	SELECT 
+		        #review_seq#,
+		        1,
+		        code1,
+		        code2,
+		        SYSDATE
+				FROM T_MEM_INFORMATION 
+				WHERE mem_id = #mem_id#
+				AND code1 = '71' 
+				AND ROWNUM = 1 		        
+		    ) 
+	</insert>
+	<insert id="insertFeature2" parameterClass="Param">
+		 INSERT
+		   INTO t_review_feature
+		    (
+		        review_seq,
+		        rank,
+		        code1,
+		        code2,
+		        wdate
+		    )
+		    (
+            	SELECT 
+		        #review_seq#,
+		        3,
+		        code1,
+		        code2,
+		        SYSDATE
+				FROM T_MEM_INFORMATION 
+				WHERE mem_id = #mem_id#
+				AND code1 = '73' 
+				AND ROWNUM = 1		        
+		    ) 
+	</insert>			
+
+	<select id="isLikeExists" parameterClass="Param" resultClass="Integer">
+		SELECT COUNT(*)
+		  FROM T_REVIEW_RECOMMEN_LOG
+		 WHERE seq > 0
+		   and review_seq = #review_seq#
+		   and mem_id = #mem_id#
+		   AND trunc(regist_date) = trunc(sysdate)
+	</select>
+	
+	<update id="increaseRecommend" parameterClass="Param">
+		UPDATE T_PRODUCT_REVIEW
+		SET    recommend    = recommend + 1
+		WHERE  review_seq    = #review_seq#
+	</update>	
+
+	<insert id="insertRecommend" parameterClass="Param">
+		INSERT INTO T_REVIEW_RECOMMEN_LOG(
+			seq, review_seq, mem_id, regist_date)
+		VALUES(
+			(SELECT NVL(MAX(seq), 0) + 1 FROM T_REVIEW_RECOMMEN_LOG), #review_seq#, #mem_id#, SYSDATE)
+	</insert>	
+			
+	<select id="isExistsNomal" parameterClass="Param" resultClass="Integer">
+		SELECT COUNT(*)
+          FROM T_PRODUCT_REVIEW
+         WHERE mem_id = #mem_id#
+           AND DPID = #dpid#
+		   AND orderid IS NULL
+		   AND status = 'S'           
+	</select>
+	
+	<select id="isExistsChkOrderForPoint" parameterClass="Param" resultClass="Integer">
+		SELECT COUNT(*)
+          FROM T_PRODUCT_REVIEW
+         WHERE mem_id = #mem_id#
+           AND DPID = #dpid#
+           AND ORDERID = #orderid#
+	</select>
+	
+	<select id="isExistsForAll" parameterClass="Param" resultClass="Integer">
+		SELECT COUNT(*)
+          FROM T_PRODUCT_REVIEW
+         WHERE to_char(regist_date,'yyyyMMdd') = to_char(SYSDATE,'yyyyMMdd')
+           AND mem_id = #mem_id#
+	</select>
+
+	<select id="getOrderItemList" resultClass="Param" parameterClass="Param" >
+		<![CDATA[		
+		select * from
+		( 			
+			SELECT row_number ( ) over ( ORDER BY item.orderid DESC, item.ship_seq, item.ITEM_SEQ ) rnum,
+				o_master.orderid, o_master.order_date, ship.status, item.SHIP_SEQ, item.item_seq, nvl(item.REL_DPID, item.dpid) rel_dpid,
+				item.qty, item.return_qty, item.noapply_qty, item.cancel_status, (item.qty - nvl(item.return_qty, 0) + item.noapply_qty) exists_qty,
+			    pc.dpid, pc.grade_code, pc.device_type, pc.price,
+			    pc.promotion_gift,	pc.promotion_discount, pc.promotion_online, pc.image_original, pc.image_large,
+			    pc.image_medium, pc.image_small, pc.image_thumb, pc.review_cnt, pc.review_score_avg,
+			    pc.feature_01, pc.feature_02, pc.feature_03, pc.feature_04, pc.feature_05,   pc.option_cnt,
+			    display.site_code, display.pserial, display.title_l, display.title_s, display.tag, display.default_price, display.show_grade_type,
+			    display.regist_date,  display.soldout, display.type, display.coupon_yn,
+			    opt_prod.opt_dpid, opt_prod.title opt_title,
+                CASE WHEN 
+                	item.dpid != item.rel_dpid
+                THEN 
+                	(SELECT title_s FROM T_PRODUCT_DISPLAY WHERE dpid = item.rel_dpid) 	
+                ELSE 
+                	display.title_s
+                END AS rel_dpid_title_s			    
+			  FROM T_ORDER_MASTER o_master
+			     , t_order_ship ship
+			     , t_order_item item
+			     , t_product_cache pc
+			     , t_product_display display
+			     , T_PRODUCT_OPTION opt_prod
+			     , t_product_review review 
+			 WHERE o_master.orderid = ship.ORDERID 
+			       AND ship.orderid = item.ORDERID 
+			       AND ship.ship_seq = item.SHIP_SEQ 
+			       AND item.dpid = pc.DPID 
+			       AND item.dpid = display.dpid 
+			       AND item.cancel_status is null
+			       AND pc.dpid = display.DPID 
+			       AND item.dpid = opt_prod.opt_dpid(+) 
+			       AND item.rel_dpid = opt_prod.dpid(+) 
+			       AND item.DPID = review.dpid(+)
+			       AND item.ORDERID = review.orderid(+)			       
+			       AND o_master.MEM_ID = #mem_id#
+			       AND o_master.site_code = #site_code#
+			       AND o_master.order_date >= add_months ( SYSDATE, - 3 )
+			       AND ship.STATUS = '60'
+			       AND item.item_seq > 0
+			       AND display.status = 'S' 
+			       AND display.approval_yn = 'Y' 
+			       AND display.type in('A', 'S')
+			       AND display.start_date <= SYSDATE 
+			       AND display.end_date >= SYSDATE 
+			]]>			       
+			<include refid="Common.productCache"/> 
+			<isNotEmpty property="show_grade_type">
+				<isEqual property="show_grade_type" compareValue="Y">
+				AND display.show_grade_type	in ('A', 'E')
+				</isEqual>	
+				<isNotEqual property="show_grade_type" compareValue="Y">
+				AND display.show_grade_type	in ('A', 'S')
+				</isNotEqual>
+			</isNotEmpty>	
+			AND review.orderid IS NULL		
+ 	    <![CDATA[   
+			) 	    
+		  WHERE rnum <= #POS_END#
+		    AND rnum > #POS_STA#	
+		]]>				
+	</select>	
+
+	<select id="getOrderItemListCount"  resultClass="Integer" parameterClass="Param" >
+		<![CDATA[  
+			SELECT count(*)
+			  FROM T_ORDER_MASTER o_master
+			     , t_order_ship ship
+			     , t_order_item item
+			     , t_product_cache pc
+			     , t_product_display display
+			     , T_PRODUCT_OPTION opt_prod 
+			     , t_product_review review
+			 WHERE o_master.orderid = ship.ORDERID 
+			       AND ship.orderid = item.ORDERID 
+			       AND ship.ship_seq = item.SHIP_SEQ 
+			       AND item.dpid = pc.DPID 
+			       AND item.dpid = display.dpid 
+			       AND item.cancel_status is null
+			       AND pc.dpid = display.DPID 
+			       AND item.dpid = opt_prod.opt_dpid(+) 
+			       AND item.rel_dpid = opt_prod.dpid(+) 
+			       AND item.DPID = review.dpid(+)
+			       AND item.ORDERID = review.orderid(+)			       
+			       AND o_master.MEM_ID = #mem_id#
+			       AND o_master.site_code = #site_code#
+			       AND o_master.order_date >= add_months ( SYSDATE, - 3 )
+			       AND ship.STATUS = '60'
+			       AND item.item_seq > 0
+			       AND display.status = 'S' 
+			       AND display.approval_yn = 'Y' 
+			       AND display.type in('A', 'S') 
+			       AND display.start_date <= SYSDATE 
+			       AND display.end_date >= SYSDATE 
+			]]>			       
+			<include refid="Common.productCache"/>
+			<isNotEmpty property="show_grade_type">
+				<isEqual property="show_grade_type" compareValue="Y">
+				AND display.show_grade_type	in ('A', 'E')
+				</isEqual>	
+				<isNotEqual property="show_grade_type" compareValue="Y">
+				AND display.show_grade_type	in ('A', 'S')
+				</isNotEqual>
+			</isNotEmpty>
+			AND review.orderid IS NULL
+	</select>	
+	
+	<select id="getOrderItemForProduct" resultClass="Param" parameterClass="Param" > 
+		<![CDATA[		
+			SELECT row_number ( ) over ( ORDER BY item.orderid DESC, item.ship_seq, item.ITEM_SEQ ) rnum,
+				o_master.orderid, o_master.order_date, ship.status, item.SHIP_SEQ, item.item_seq, nvl(item.REL_DPID, item.dpid) rel_dpid,
+				item.qty, item.return_qty, item.noapply_qty, item.cancel_status, (item.qty - nvl(item.return_qty, 0) + item.noapply_qty) exists_qty,				
+			    display.site_code, display.pserial, display.title_l, display.title_s, display.tag, display.default_price, display.show_grade_type,
+			    display.regist_date,  display.soldout, display.type,
+			    opt_prod.opt_dpid, opt_prod.title opt_title,
+                CASE WHEN 
+                	item.dpid != item.rel_dpid 
+                THEN 
+                	(SELECT title_s FROM T_PRODUCT_DISPLAY WHERE dpid = item.rel_dpid) 	
+                ELSE 
+                	display.title_s
+                END AS rel_dpid_title_s			    
+			  FROM T_ORDER_MASTER o_master
+			     , t_order_ship ship
+			     , t_order_item item
+			     , t_product_display display
+			     , T_PRODUCT_OPTION opt_prod
+			     , t_product_review review 
+			 WHERE o_master.orderid = ship.ORDERID 
+			       AND ship.orderid = item.ORDERID 
+			       AND ship.ship_seq = item.SHIP_SEQ 
+			       AND item.dpid = display.dpid 
+			       AND item.dpid = opt_prod.opt_dpid(+) 
+			       AND item.rel_dpid = opt_prod.dpid(+) 
+			       AND item.DPID = review.dpid(+)
+			       AND item.ORDERID = review.orderid(+)			       
+			       AND o_master.MEM_ID = #mem_id#
+			       AND o_master.site_code = #site_code#
+			       AND o_master.order_date >= add_months ( SYSDATE, - 3 )
+			       AND ship.STATUS = '60'
+			       AND item.item_seq > 0
+			]]>
+			<isNotEmpty property="orderid">
+			       AND item.orderid = #orderid#
+			</isNotEmpty>			
+			<isNotEmpty property="option_cnt_yn">
+				<isEqual property="option_cnt_yn" compareValue="N">						       
+			       AND item.dpid = #dpid#
+			    </isEqual>
+			   	<isEqual property="option_cnt_yn" compareValue="Y"> 
+			       AND item.dpid IN (
+			       	 SELECT opt_dpid FROM t_product_option WHERE dpid = #dpid# 
+			       )
+			    </isEqual>
+			</isNotEmpty>
+			<![CDATA[        			       
+			       AND display.approval_yn = 'Y' 
+			       AND display.type in('A', 'S')
+			       AND display.start_date <= SYSDATE 
+			       AND display.end_date >= SYSDATE 
+			]]>			       
+			<isNotEmpty property="show_grade_type">
+				<isEqual property="show_grade_type" compareValue="Y">
+				AND display.show_grade_type	in ('A', 'E')
+				</isEqual>	
+				<isNotEqual property="show_grade_type" compareValue="Y">
+				AND display.show_grade_type	in ('A', 'S')
+				</isNotEqual>
+			</isNotEmpty>	
+			AND review.orderid IS NULL		
+		
+	</select>	
+
+	<select id="isExistsOrderItemForProduct"  resultClass="Integer" parameterClass="Param" >
+		<![CDATA[  
+			SELECT COUNT(*)
+			  FROM T_ORDER_MASTER o_master
+			     , t_order_ship ship
+			     , t_order_item item
+			 WHERE o_master.orderid = ship.ORDERID 
+			       AND ship.orderid = item.ORDERID 
+			       AND ship.ship_seq = item.SHIP_SEQ
+			       AND o_master.MEM_ID = #mem_id#
+			       AND o_master.site_code = #site_code#
+			       AND o_master.grade_code = #grade_code#
+			       AND o_master.order_date >= add_months ( SYSDATE, - 3 )
+			       AND ship.STATUS = '60'
+			       AND item.item_seq > 0
+			       AND item.cancel_status is null
+			]]>
+			<isNotEmpty property="option_cnt_yn">
+				<isEqual property="option_cnt_yn" compareValue="N">						       
+			       AND item.dpid = #dpid#
+			    </isEqual>
+			   	<isEqual property="option_cnt_yn" compareValue="Y"> 
+			       AND item.dpid IN (
+			       	 SELECT opt_dpid FROM t_product_option WHERE dpid = #dpid# 
+			       )
+			    </isEqual>
+			</isNotEmpty>
+	</select>	
+</sqlMap>

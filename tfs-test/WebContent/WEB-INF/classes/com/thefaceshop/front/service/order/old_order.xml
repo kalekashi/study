@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="OldOrder">
+	
+	<select id="getGiftList" parameterClass="String" resultClass="Param">
+		SELECT FUNC_GET_PRODNM@old_tfs ( PROD_CD ) BONS_NM
+		     , PROD_QTY 
+		  FROM SHOP_ORD_BONUS@old_tfs 
+		 WHERE ORD_SNO = #orderid# 
+		ORDER BY ETC1
+	</select>
+	
+	<select id="getInfo" resultClass="Param" parameterClass="String">
+		SELECT ORD.ORD_SNO
+		     , MIN ( ORD.SND_NM ) SND_NM
+		     , MIN ( ORD.RCV_NM ) RCV_NM
+		     , MIN ( '['||ORD.RCV_ZIPCODE1||'-'||RCV_ZIPCODE2||'] '||ORD.RCV_ADDR1||' '||ORD.RCV_ADDR2 ) RCV_ADDR
+		     , MIN ( ORD.RCV_TEL1||'-'||ORD.RCV_TEL2||'-'||ORD.RCV_TEL3 ) RCV_TEL
+		     , MIN ( ORD.RCV_CPHONE1||'-'||ORD.RCV_CPHONE2||'-'||ORD.RCV_CPHONE3 ) RCV_CPHONE
+		     , MIN ( ORD.DELI_MSG ) DELI_MSG
+		     , MIN ( ORD.TOT_ORD_AMT ) TOT_ORD_AMT
+		     , MIN ( ORD.TOT_DELI_FEE ) TOT_DELI_FEE
+		     , MIN ( ORD.TOT_USED_MILG ) TOT_USED_MILG
+		     , MIN ( ORD.TOT_USED_CPN ) TOT_USED_CPN
+		     , NVL ( FUNC_GET_OCB_USED_POINT@old_tfs ( ORD.ORD_SNO ), 0 ) OCB_POINT
+		     , NVL ( MIN ( ORD.GIFT_AMT ), 0 ) GIFT_AMT
+		     , MIN ( ORD.TOT_SETT_AMT ) TOT_SETT_AMT
+		     , FUNC_GET_CODE_NM@old_tfs ( 'C067', MIN ( ORD.PAY_WAY_GB ) ) PAY_WAY_GB 
+		  FROM SHOP_ORDER@old_tfs ORD
+		     , SHOP_ORD_DTL@old_tfs DTL
+		     , SHOP_ORD_DELI_FEE@old_tfs DELI 
+		 WHERE ORD.ORD_SNO = #orderid# 
+		       AND ORD.ORD_SNO = DTL.ORD_SNO 
+		       AND ORD.ORD_SNO = DELI.ORD_SNO 
+		 GROUP BY ORD.ORD_SNO
+   	</select>
+	
+	<select id="getItems" resultClass="Param" parameterClass="String">
+		SELECT DTL.ORD_SNO
+		     , DTL.PROD_NM
+		     , DTL.MEM_GRD_AMT
+		     , DTL.ORD_QTY
+		     , DTL.ALOW_MILG
+		     , FUNC_GET_CODE_NM@old_tfs ( 'C049', ORD_STATUS_CD ) ORD_STATUS_NM 
+		  FROM  
+		       (SELECT ORD_SNO
+		            , PROD_CD
+		            , PROD_NM
+		            , PROD_GB
+		            , ORD_QTY
+		            , MEM_GRD_AMT
+		            , ALOW_MILG 
+		         FROM SHOP_ORD_DTL@old_tfs 
+		        WHERE ORD_SNO = #orderid#  
+		       ) DTL
+		     , SHOP_ORDER@old_tfs ORDIN
+		     , SHOP_PRODUCT@old_tfs P 
+		 WHERE DTL.ORD_SNO = ORDIN.ORD_SNO 
+		       AND DTL.PROD_CD = P.PROD_CD 
+		ORDER BY DTL.PROD_GB
+	</select>
+	
+	<select id="getList" resultClass="Param" parameterClass="Param">
+		 SELECT *
+		   FROM
+		       (SELECT ROWNUM rnum
+		            , a. * 
+		         FROM 
+		              (  
+		                     (SELECT ORD_YMD
+		                          , ORD_SNO
+		                          , TOTAL_PROD
+		                          , TOT_SETT_AMT
+		                          , ORD_STATUS_NM
+		                          , GETINVCSNO@old_tfs ( ORD_SNO ) INVC_SNO 
+		                       FROM 
+		                            (SELECT ORD.ORD_SNO ORD_SNO
+		                                 , ORD.TOT_SETT_AMT TOT_SETT_AMT
+		                                 , TO_CHAR ( TO_DATE ( ORD.ORD_YMDH, 'YYYYMMDDHH24MISS' ), 'YYYY.MM.DD' ) ORD_YMD
+		                                 , FUNC_GET_CODE_NM@old_tfs ( 'C049', ORD_STATUS_CD ) ORD_STATUS_NM
+		                                 , ORD_STATUS_CD T6
+		                                 , ORDDTL.TOTAL TOTAL_PROD 
+		                              FROM SHOP_ORDER@old_tfs ORD
+		                                 ,  
+		                                   (SELECT DTL.ORD_SNO
+		                                        , MAX 
+		                                          ( 
+		                                              CASE 
+		                                                  WHEN DTL.PROD_GB = '1' THEN DTL.PROD_NM 
+		                                              END 
+		                                          ) 
+		                                          ||'  포함 총'||COUNT ( DTL.PROD_CD ) ||'건' TOTAL 
+		                                     FROM SHOP_ORD_DTL@old_tfs DTL
+		                                        , SHOP_ORDER@old_tfs ORDIN 
+		                                    WHERE DTL.ORD_SNO = ORDIN.ORD_SNO 
+		                                          AND DTL.STORE_CD = ORDIN.STORE_CD 
+		                                          AND ORDIN.MEM_ID = 'lcr84522' 
+		                                    GROUP BY DTL.ORD_SNO  
+		                                   ) ORDDTL 
+		                             WHERE ORD.ORD_SNO BETWEEN '201507010000000000' AND '201512162359599999'  
+		                                   AND ORD.MEM_ID = #mem_id#
+		                                   AND ORD.ORD_SNO = ORDDTL.ORD_SNO 
+		                                   AND ORD.ord_status_cd IN ('00001', '00002', '00003')
+		                            ) 
+		                   ORDER BY ORD_YMD DESC  
+		                     ) a  
+		                 ) 
+		           WHERE ROWNUM <![CDATA[<]]>= #POS_END#  
+		          ) 
+		    WHERE rnum > #POS_STA#                 
+	</select>
+		
+	<select id="getListCount" resultClass="Integer" parameterClass="String">
+		SELECT COUNT(*)
+		  FROM SHOP_ORDER@old_tfs ORD
+		     ,  
+		       (SELECT DTL.ORD_SNO
+		            , MAX 
+		              ( 
+		                  CASE 
+		                      WHEN DTL.PROD_GB = '1' THEN DTL.PROD_NM 
+		                  END 
+		              ) 
+		              ||'  포함 총'||COUNT ( DTL.PROD_CD ) ||'건' TOTAL 
+		         FROM SHOP_ORD_DTL@old_tfs DTL
+		            , SHOP_ORDER@old_tfs ORDIN 
+		        WHERE DTL.ORD_SNO = ORDIN.ORD_SNO 
+		              AND DTL.STORE_CD = '01' 
+		              AND DTL.STORE_CD = ORDIN.STORE_CD 
+		              AND ORDIN.MEM_ID = 'lcr84522' 
+		        GROUP BY DTL.ORD_SNO  
+		       ) ORDDTL 
+		 WHERE ORD.ORD_SNO BETWEEN '201507010000000000' AND '201512162359599999' 
+		       AND ORD.MEM_ID = #mem_id# 
+		       AND ORD.ORD_SNO = ORDDTL.ORD_SNO 
+		       AND ORD.STORE_CD = '01'  
+	</select>
+</sqlMap>

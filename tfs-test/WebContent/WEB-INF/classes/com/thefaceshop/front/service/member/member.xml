@@ -1,0 +1,646 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="Member">
+	<select id="getInfo" parameterClass="Param" resultClass="Param">
+		SELECT A.MEM_ID,
+			   A.MEM_NM,
+			   DECODE(A.U_CUST_YN, 'Y', B.U_LOGIN_PW, A.PWD) PWD, 
+			   A.MOBILE,
+			   A.EMAIL,
+			   A.STATUS,
+			   A.U_CUST_YN,
+			   A.N_CUST_ID,
+			   A.TEL,
+			   A.JUMIN_NO,
+			   A.SMS_YN,
+			   A.MAILING_YN,
+			   A.CONNINFO, 
+			   F.MARRIES_CHK, F.MDATE, F.BDATE, 
+			   A.ZIP, A.ADDR1, A.ADDR2,
+			   A.HOME_ROAD_NAME_ADDR_YN, A.HOME_ROAD_NAME_POST_NO, A.HOME_ROAD_NAME_ADDR1, A.HOME_ROAD_NAME_ADDR2,
+			   NVL(C.COM_AGR_YN, 'N') COM_AGR_YN,
+			   NVL(D.EMPLOYEE_YN, 'N') EMPLOYEE_YN,
+			   TO_CHAR(ADD_MONTHS(E.PWD_CHANGEDATE, 3), 'YYYYMMDD') AS PWD_CHANGEDATE,
+			   B.U_CUST_MB_KAN_CD,
+			   NVL(E.visit_cnt, 0) VISIT_CNT
+		  FROM T_MEM A, IF_TDC10@CRM B, IF_TFS_POINT_FLAG C, T_MEM_MORE D, T_MEM_ACCESS E, T_MEM_PERSON F
+		 WHERE A.N_CUST_ID = B.N_CUST_ID
+		   AND A.N_CUST_ID = C.N_CUST_ID(+)
+		   AND A.MEM_ID = D.MEM_ID(+)
+		   AND A.MEM_ID = E.MEM_ID(+)
+		   AND A.MEM_ID = F.MEM_ID(+)
+	<isNotEmpty property="mem_id">
+			AND A.MEM_ID = #mem_id#
+	</isNotEmpty>		   
+	<isNotEmpty property="conninfo">
+			AND A.CONNINFO = #conninfo#
+	</isNotEmpty>
+		   AND D.SITE_CODE(+) = #site_code#
+	</select>
+	
+	<select id="getTDC10InfoByConninfo" parameterClass="Param" resultClass="java.lang.Integer">
+		SELECT COUNT(*)
+		FROM IF_TDC10@CRM
+		WHERE u_cust_yn = 'Y'
+		AND (u_cust_sece_yn = 'N' OR u_cust_sece_yn IS NULL)
+		AND anoth_offer_cond_yn = 'Y'
+		AND conninfo = #conninfo#
+	</select>
+	
+	<select id="getTDC10InfoByAuthInfo" parameterClass="Param" resultClass="Param">
+		SELECT *
+		FROM IF_TDC10@CRM
+		WHERE u_cust_yn = 'Y'
+		AND (u_cust_sece_yn = 'N' OR u_cust_sece_yn IS NULL)
+		AND anoth_offer_cond_yn = 'Y'
+		AND (
+			conninfo = #conninfo#
+			OR
+			(
+				ssn7 = #ssn7#
+				AND cust_hnm = #cust_hnm#
+				AND cell_phnno = #cell_phnno#
+			)
+		) 
+	</select>
+	
+	<select id="getGradeInfo" parameterClass="Param" resultClass="Param">
+		SELECT ch_cd, cust_id, cust_grd_cd, resi_date
+		FROM TCOM_CUSTGRD@TCOM
+		WHERE apply_mth = TO_CHAR(SYSDATE, 'YYYYMM')
+		AND n_cust_id = #n_cust_id#
+		AND ch_cd = #ch_cd#
+		AND ROWNUM = 1
+	</select>
+	
+	<select id="getMemAccessInfo" parameterClass="java.lang.String" resultClass="Param">
+		SELECT * 
+		  FROM T_MEM_ACCESS
+		 WHERE MEM_ID = #mem_id#
+	</select>
+	
+	<update id="mergeMemAccess" parameterClass="Param">
+		MERGE INTO T_MEM_ACCESS
+		USING DUAL
+			ON	( MEM_ID = #mem_id# )
+		WHEN MATCHED THEN
+			UPDATE	SET
+				VISIT_CNT		= VISIT_CNT + 1,
+				LST_LOGINDATE	= TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+				REG_IP			= #reg_ip#
+		WHEN NOT MATCHED THEN
+			INSERT 
+				( 
+					MEM_ID, 
+					VISIT_CNT, 
+					REG_IP,
+					PWD_CHANGEDATE 
+				)
+			VALUES 
+				( 
+					#mem_id#, 
+					0, 
+					#reg_ip#,
+					SYSDATE
+				)
+	</update>
+	
+	<update id="mergeIfTFSPointFlag" parameterClass="Param">
+		MERGE INTO IF_TFS_POINT_FLAG
+		USING DUAL
+			ON ( N_CUST_ID = #n_cust_id# )
+		WHEN NOT MATCHED THEN
+			INSERT 
+				(
+					N_CUST_ID, 
+					COM_AGR_YN, 
+					REPR_MEM_ID, 
+					CREATE_DTIME, 
+					CREATE_ID, 
+					UPDATE_DTIME, 
+					UPDATE_ID, 
+					COM_AGR_DATE
+				)
+			VALUES
+				(
+					#n_cust_id#,
+					'Y',
+					#mem_id#,
+					SYSDATE,
+					#mem_id#,
+					SYSDATE,
+					#mem_id#,
+					TO_CHAR(SYSDATE, 'YYYYMMDD')
+				)
+	</update>
+	
+	<update id="mergeTcomCustpntm" parameterClass="Param">
+		MERGE INTO TCOM_CUSTPNTM@TCOM
+		USING DUAL
+			ON	(
+					N_CUST_ID = #n_cust_id#
+					AND CH_CD = 'TFS'
+				)
+		WHEN NOT MATCHED THEN
+			INSERT
+				(
+					CH_CD, 
+					CUST_ID, 
+					N_CUST_ID,
+					CREATE_ID, 
+					UPDATE_ID
+				)
+			VALUES
+				(
+					'TFS',
+					#n_cust_id#,
+					#n_cust_id#,
+					#mem_id#,
+					#mem_id#
+				)
+		
+	</update>
+	
+	<update id="mergeTcomAgryn" parameterClass="Param">
+		MERGE INTO TCOM_AGRYN@TCOM
+		USING DUAL
+			ON 	( N_CUST_ID = #n_cust_id# )
+		WHEN NOT MATCHED THEN
+			INSERT 
+				(
+					N_CUST_ID, 
+					COM_AGR_YN, 
+					TFSO_REPR_CUST_ID, 
+					CREATE_DTIME, 
+					CREATE_ID, 
+					UPDATE_DTIME, 
+					UPDATE_ID, 
+					COM_AGR_DATE
+				)
+			VALUES
+				(
+					#n_cust_id#,
+					'Y',
+					#mem_id#,
+					SYSDATE,
+					#mem_id#,
+					SYSDATE,
+					#mem_id#,
+					TO_CHAR(SYSDATE, 'YYYYMMDD')
+				)
+	</update>
+	
+	<update id="updateTcomAgryn" parameterClass="Param">
+		UPDATE TCOM_AGRYN@TCOM
+		SET com_agr_yn = 'Y',
+			com_agr_date = TO_CHAR(SYSDATE, 'YYYYMMDD'),
+			update_dtime = SYSDATE,
+			update_id = #mem_id#
+		WHERE n_cust_id = #n_cust_id#
+	</update>
+	
+	<update id="updateIfTFSPointFlag" parameterClass="Param">
+		UPDATE IF_TFS_POINT_FLAG
+		SET com_agr_yn = 'Y',
+			com_agr_date = TO_CHAR(SYSDATE, 'YYYYMMDD'),
+			update_dtime = SYSDATE,
+			update_id = #mem_id#
+		WHERE n_cust_id = #n_cust_id#
+	</update>
+	
+	<insert id="insertLoginLog" parameterClass="Param">
+		INSERT INTO T_MEM_LOGIN_LOG
+			(
+				SITE_CODE,
+				MEM_ID,
+				SEQ,
+				IP,
+				USER_AGENT,
+				COOKIE,
+				SESSIONID,
+				ACCESS_DATE
+			)
+		VALUES
+			(
+				#site_code#,
+				#mem_id#,
+				(
+					SELECT NVL(MAX(SEQ), 0) + 1 
+					  FROM T_MEM_LOGIN_LOG 
+					 WHERE SITE_CODE = #site_code# 
+					   AND MEM_ID = #mem_id#
+				),
+				#ip#,
+				#user_agent#,
+				#cookie#,
+				#sessionid#,
+				SYSDATE
+			)
+	</insert>
+
+	<parameterMap class="Param" id="prmSendMap">
+ 		<parameter property="mem_id" javaType="java.lang.String" jdbcType="VARCHAR" mode="IN" />
+ 		<parameter property="mode" javaType="java.lang.String" jdbcType="VARCHAR" mode="IN" />
+ 	</parameterMap>
+ 	
+ 	<procedure id="prmSend" parameterMap="prmSendMap">
+ 		{ CALL PRC_TFSO_PRM_SEND(?, ?) }
+ 	</procedure>
+ 	
+ 	<parameterMap class="Param" id="prcMemberMap">
+ 		<parameter property="mem_id" javaType="java.lang.String" jdbcType="VARCHAR" mode="IN" />
+ 		<parameter property="mode" javaType="java.lang.String" jdbcType="VARCHAR" mode="IN" />
+ 	</parameterMap>
+ 	
+ 	<procedure id="prcMember" parameterMap="prcMemberMap">
+ 		{ CALL PRC_TFSO_MEMBER(?, ?) }
+ 	</procedure>
+	
+	<update id="mergeMemMore" parameterClass="Param">
+		MERGE INTO T_MEM_MORE
+		USING DUAL
+			ON 	( 
+					SITE_CODE = #site_code#
+					AND MEM_ID = #mem_id# 
+				)
+		WHEN NOT MATCHED THEN
+			INSERT
+				(
+					SITE_CODE,
+					MEM_ID,
+					NAME,
+					GRADE_CODE,
+					EMPLOYEE_YN
+				)
+			VALUES
+				(
+					#site_code#,
+					#mem_id#,
+					#name#,
+					#grade_code#,
+					'N'
+				)
+	</update>
+	
+	<select id="getInfoByCi" parameterClass="Param" resultClass="Param">
+		SELECT A.MEM_ID,
+			   A.MEM_NM,
+			   A.MOBILE,
+			   A.EMAIL,
+			   A.STATUS,
+			   A.U_CUST_YN,
+			   A.N_CUST_ID,
+			   A.CONNINFO,
+			   A.JOIN_DATE,
+			   B.SITE_CODE
+		  FROM T_MEM A, T_MEM_MORE B
+		 WHERE A.MEM_ID = B.MEM_ID(+)
+		   AND A.CONNINFO = #conninfo#
+		   AND B.SITE_CODE(+) = #site_code#
+	</select>
+	
+	<update id="modifyMem" parameterClass="Param">
+		UPDATE T_MEM
+		SET pwd = #pwd#,
+			zip = #zip#,
+			addr1 = #addr1#,
+			addr2 = #addr2#,
+			tel = #tel1# || '-' || #tel2# || '-' || #tel3#,
+			mobile = #mobile1# || '-' || #mobile2# || '-' || #mobile3#,
+			sms_yn = NVL(#sms_yn#, 'N'),
+			mailing_yn = NVL(#mailing_yn#, 'N'),
+			email = #email1# || '@' || #email2#,
+			home_road_name_addr_yn = #home_road_name_addr_yn#,
+			home_road_name_post_no = #home_road_name_post_no#,
+			home_road_name_addr1 = #home_road_name_addr1#,
+			home_road_name_addr2 = #home_road_name_addr2#
+		WHERE mem_id = #mem_id#
+	</update>
+	
+	<update id="modifyMemPerson" parameterClass="Param">
+		UPDATE T_MEM_PERSON
+		SET marries_chk = NVL(#marries_chk#, 'N'),
+			mdate = DECODE(#marries_chk#, 'Y', #marry_mm# || #marry_dd#, ''),
+			up_date = TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS')
+		WHERE mem_id = #mem_id#
+	</update>
+	
+	<update id="modifyPasswordTFS" parameterClass="Param">
+		UPDATE T_MEM
+		SET pwd = #pwd_enc#
+		WHERE mem_id = #mem_id#
+	</update>
+	
+	<parameterMap class="Param" id="memDropMap">
+ 		<parameter property="mem_id" javaType="java.lang.String" jdbcType="VARCHAR" mode="IN" />
+ 		<parameter property="admin_id" javaType="java.lang.String" jdbcType="VARCHAR" mode="IN" />
+ 		<parameter property="err_code" javaType="java.lang.String" jdbcType="VARCHAR" mode="OUT" />
+ 		<parameter property="err_message" javaType="java.lang.String" jdbcType="VARCHAR" mode="OUT" />
+ 	</parameterMap>
+ 	
+ 	<procedure id="memDrop" parameterMap="memDropMap">
+ 		{ CALL PRC_TFSO_MEM_DROP(?, ?, ?, ?) }
+ 	</procedure>
+ 	
+ 	<insert id="insertSecedeReason" parameterClass="Param">
+		INSERT INTO T_MEM_SECEDE(
+			mem_id, code2, etc_content, regist_date)
+		VALUES(
+			#mem_id#, #code2#, #etc_content#, SYSDATE)
+	</insert>
+	
+	<update id="updatePwdChangeDate" parameterClass="Param">
+		UPDATE T_MEM_ACCESS
+		SET
+		<isEqual property="type" compareValue="C">
+			pwd_changedate = SYSDATE
+		</isEqual>
+		<isEqual property="type" compareValue="N">
+			pwd_changedate = ADD_MONTHS(SYSDATE, -2)
+		</isEqual>
+		WHERE mem_id = #mem_id#
+	</update>
+	
+	<select id="getMemInformationList" parameterClass="Param" resultClass="Param">
+		SELECT A.code1, A.code2, A.name2, B.code2 AS checked_code
+		FROM T_CODE2 A, T_MEM_INFORMATION B
+		WHERE A.code2 = B.code2(+)
+		AND B.mem_id(+) = #mem_id#
+		<isEqual property="checked_type" compareValue="skin_type">
+		AND A.code1 = '71'
+		</isEqual>
+		<isEqual property="checked_type" compareValue="skin_trouble">
+		AND A.code1 = '73'
+		</isEqual>
+		ORDER BY A.code2 ASC
+	</select>
+	
+	<select id="getMyInformationList" parameterClass="Param" resultClass="Param">
+		SELECT A.code1, A.code2, a.code2 as feature_code, B.name2
+		FROM T_MEM_INFORMATION A, T_CODE2 B
+		WHERE A.code1 = B.code1
+		AND A.code2 = B.code2
+		AND A.code1 = #code1#
+		AND A.mem_id = #mem_id#
+	</select>
+	
+	<insert id="insertMemInformation" parameterClass="Param">
+		INSERT INTO T_MEM_INFORMATION(
+			mem_id, code1, code2)
+		VALUES(
+			#mem_id#, #code1#, #code2#)
+	</insert>
+	
+	<delete id="deleteMemInformation" parameterClass="Param">
+		DELETE FROM T_MEM_INFORMATION
+		WHERE mem_id = #mem_id#
+	</delete>
+	
+	<select id="checkOrderForSecede" parameterClass="Param" resultClass="java.lang.Integer">
+		SELECT COUNT(*)
+		FROM T_ORDER_MASTER A, T_ORDER_SHIP B
+		WHERE A.orderid = B.orderid
+		AND B.status NOT IN ('60', '09', '21', '19')
+		AND A.mem_id = #mem_id#
+	</select>
+	
+	<select id="getOrderCompleteList" parameterClass="Param" resultClass="Param">
+		SELECT row_number ( ) over ( ORDER BY a.orderid ) rnum
+		     , a.orderid
+		     , amt
+		     , pay_amt
+		     , cancel_amt
+		     , TO_CHAR ( order_date, 'yyyymmdd' ) order_date 
+		  FROM T_ORDER_MASTER A
+		     , T_ORDER_SHIP B 
+		 WHERE A.orderid = B.orderid 
+		       AND b.ship_seq = 1 
+		       AND b.return_yn = 'N' 
+		       AND b.org_orderid IS NULL
+		<isEqual property="type" compareValue="A">
+		AND B.status in('53', '60')
+		</isEqual>
+		<isEqual property="type" compareValue="C">
+		AND B.status ='53'
+		</isEqual>
+		<isNotEmpty property="pay_amt"> 
+		AND a.pay_amt >= #pay_amt#
+		</isNotEmpty>		
+		AND a.order_date > TO_DATE(#odate#, 'yyyymmdd')   
+		AND A.mem_id = #mem_id#
+	</select>	
+	
+	<select id="getDelMemInfo" parameterClass="Param" resultClass="Param">
+		SELECT /*+INDEX_DESC(A IDX_MEM_OUTLIST) USE_NL(A B C) ORDERED */ A.n_cust_id,
+			A.u_cust_yn, A.mem_id, DECODE(A.u_cust_yn, 'Y', C.u_login_pw, B.pwd) AS pwd,
+			DECODE(A.u_cust_yn, 'Y', C.cust_hnm, B.mem_nm) AS mem_nm,
+			DECODE(A.u_cust_yn, 'Y', C.cell_phnno, B.mobile) AS mobile,
+			DECODE(A.u_cust_yn, 'Y', C.ssn7, B.jumin_no) AS jumin_no,
+			DECODE(A.u_cust_yn, 'Y', C.conninfo, B.conninfo) AS conninfo
+		FROM SHOP_MEM_DROP A, T_MEM_BACKUP B, IF_TDC10_DROP@CRM C
+		WHERE A.n_cust_id = B.n_cust_id
+		AND A.n_cust_id = C.n_cust_id(+)
+		AND A.request_admin_id = 'COM'
+		AND C.updt_user(+) = 'COM'
+		AND B.mem_id > ' '
+		AND A.in_ymdh >= TO_CHAR(TO_DATE('20150701', 'YYYYMMDD'), 'YYYYMMDD') || '000000'
+		<isNotEmpty property="mem_id">
+		AND A.mem_id = #mem_id#
+		</isNotEmpty>
+		<isNotEmpty property="conninfo">
+		AND B.conninfo = #conninfo#
+		</isNotEmpty>
+	</select>
+	
+	<parameterMap class="Param" id="winBackRestMemberMap">
+ 		<parameter property="n_cust_id" javaType="java.lang.String" jdbcType="VARCHAR" mode="IN" />
+ 		<parameter property="err_code" javaType="java.lang.String" jdbcType="VARCHAR" mode="OUT" />
+ 		<parameter property="err_message" javaType="java.lang.String" jdbcType="VARCHAR" mode="OUT" />
+ 	</parameterMap>
+ 	
+ 	<procedure id="winBackRestMember" parameterMap="winBackRestMemberMap">
+ 		{ CALL SPC_UREG_REVITALIZE(?, ?, ?) }
+ 	</procedure>
+ 	
+ 	<!-- 통합가입여부 확인 오프라인 -->
+	<select id="getCustYnInfo" parameterClass="Param" resultClass="Param">
+		<![CDATA[
+			SELECT *
+			FROM IF_TDC10@CRM
+			WHERE (
+				CONNINFO = #conninfo#
+				OR (
+					SSN7 = #ssn7# 
+					AND CELL_PHNNO = #cell_phnno#
+					AND CUST_HNM = #cust_hnm#
+				)
+			)
+			AND U_CUST_YN = 'Y'
+			AND U_CUST_SECE_YN <> 'Y'
+		]]>
+	</select>
+ 	
+ 	<select id="getLegacyBatchList" parameterClass="Param" resultClass="Param">
+ 		<![CDATA[
+ 			SELECT mem_id, mode_type
+ 			FROM (
+ 				SELECT mem_id, 'MOD' AS mode_type
+ 				FROM (
+ 					SELECT A.mem_id,
+ 						(SELECT COUNT(*) FROM IF_TFSO_CUST_T_MEM WHERE mem_id = A.mem_id
+ 						AND work_timestamp >= TRUNC(SYSDATE)) AS cnt
+ 					FROM T_MEM A, T_MEM_PERSON B
+ 					WHERE A.mem_id = B.mem_id
+ 					AND B.up_date >= TO_CHAR(SYSDATE - 1, 'YYYYMMDD') || '000000'
+ 					AND A.join_date < TO_CHAR(SYSDATE - 1, 'YYYYMMDD') || '000000'
+ 					AND A.status = '00001'
+ 				)
+ 				WHERE cnt <= 0
+ 				UNION ALL
+ 				SELECT mem_id, 'INS' AS mode_type
+ 				FROM (
+ 					SELECT A.mem_id,
+ 						(SELECT COUNT(*) FROM IF_TFSO_CUST_T_MEM WHERE mem_id = A.mem_id) AS cnt
+ 					FROM T_MEM A
+ 					WHERE A.join_date >= TO_CHAR(SYSDATE - 1, 'YYYYMMDD') || '000000'
+ 					AND A.status = '00001'
+ 				)
+ 				WHERE cnt <= 0
+ 			)
+ 		]]>
+ 	</select>
+
+	<select id="getNeedNextGradeInfo" parameterClass="Param" resultClass="Param">
+		SELECT ch_cd, cust_id, apply_mth, acc_sale_amt, acc_sale_qty, acc_sale_cnt
+		FROM TCOM_CUSTGRDSCH@TCOM
+		WHERE n_cust_id = #n_cust_id#
+		AND ch_cd = #ch_cd#
+		AND ROWNUM = 1
+	</select>
+	
+	<update id="appInformationMerge" parameterClass="Param">
+		MERGE INTO T_PHONEINFO USING DUAL ON
+		(
+			os = #os# AND udid = #udid#
+		)
+		WHEN MATCHED THEN
+			UPDATE
+			SET
+		<isNotEmpty property="mem_id">
+				mem_id = #mem_id#,
+		</isNotEmpty>
+		<isNotEmpty property="conninfo">
+				conninfo = #conninfo#,
+		</isNotEmpty>		 
+		<isNotEmpty property="app_ver">
+				app_ver = #app_ver#,
+		</isNotEmpty>
+		<isNotEmpty property="os_ver">
+				os_ver = #os_ver#, 
+		</isNotEmpty>				
+		<isNotEmpty property="uuid">
+		    	uuid = #uuid#,
+		</isNotEmpty>
+		<isNotEmpty property="n_cust_id">
+		    	n_cust_id = #n_cust_id#,
+		</isNotEmpty>		
+    			update_date = SYSDATE
+			WHERE OS = #os#
+			AND UDID = #udid#
+		WHEN NOT MATCHED THEN
+			INSERT(
+				site_code, os, os_ver, udid, uuid, app_ver, push_yn, confirm_yn, mem_id, n_cust_id, regist_date)
+			VALUES(
+				#site_code#, #os#, #os_ver#, #udid#, #uuid#, #app_ver#, #push_yn#, #confirm_yn#, #mem_id#, #n_cust_id#, SYSDATE)
+	</update>
+	
+	<update id="appInformationMergeInsert" parameterClass="Param">
+		MERGE INTO T_PHONEINFO USING DUAL ON
+		(
+			os = #os# AND udid = #udid#
+		)
+		WHEN NOT MATCHED THEN
+			INSERT(
+				site_code, os, os_ver, udid, uuid, app_ver, push_yn, confirm_yn, mem_id, n_cust_id, regist_date)
+			VALUES(
+				#site_code#, #os#, #os_ver#, #udid#, #uuid#, #app_ver#, #push_yn#, #confirm_yn#, #mem_id#, #n_cust_id#, SYSDATE)
+	</update>	
+	
+	
+	<select id="getMemberAppInfo" parameterClass="Param" resultClass="Param">
+		SELECT site_code, os, udid, uuid, app_ver, push_yn, confirm_yn, mem_id, conninfo, regist_date, update_date
+		FROM T_PHONEINFO
+		WHERE os = #os#
+		AND udid = #udid#
+		<isNotEmpty property="mem_id">
+		AND mem_id = #mem_id#
+		</isNotEmpty>
+	</select>
+	
+	<update id="updateMemberAppPush" parameterClass="Param">  
+		UPDATE T_PHONEINFO
+		SET push_yn = #push_yn#,
+		<isNotEmpty property="confirm_yn">
+			confirm_yn = #confirm_yn#,
+		</isNotEmpty>
+			update_date = SYSDATE
+		WHERE udid = #udid#
+	</update> 	
+	
+	<select id="getPhoninfoListByMemId" parameterClass="Param" resultClass="Param">
+		SELECT *
+		  FROM T_PHONEINFO
+		 WHERE MEM_ID = #mem_id#
+	</select>
+	
+	<select id="getPhoninfoListByCi" parameterClass="Param" resultClass="Param">
+		SELECT *
+		  FROM T_PHONEINFO
+		 WHERE conninfo = #conninfo#
+	</select>
+	
+	<select id="getPhoninfoListByNcustId" parameterClass="Param" resultClass="Param">
+		SELECT *
+		  FROM T_PHONEINFO
+		 WHERE n_cust_id = #n_cust_id#
+	</select>	
+	
+	<select id="getMonthForNextGrade" parameterClass="Param" resultClass="Param">
+		SELECT *
+		FROM (
+			SELECT apply_mth
+			FROM TCOM_CUSTGRDSCH@TCOM
+			WHERE n_cust_id = #n_cust_id#
+			ORDER BY apply_mth DESC
+		)
+		WHERE ROWNUM = 1
+	</select>
+	
+	<select id="getNextGradeAmountInfo" parameterClass="Param" resultClass="java.lang.Integer">
+		SELECT NVL(SUM(pm06_sale_amt), 0) AS pm06_sale_amt
+		FROM TCOM_CUSTGRDSCH@TCOM
+		WHERE TO_CHAR(apply_mth) = #apply_mth#
+		AND n_cust_id = #n_cust_id#
+		<isEqual property="online_yn" compareValue="Y">
+			<isEqual property="com_agr_yn" compareValue="N">
+		AND ch_cd = 'TFSO'
+		AND tfso_cust_id = #mem_id#
+			</isEqual>
+		</isEqual>
+		<isEqual property="online_yn" compareValue="N">
+		AND ch_cd = 'TFSP'
+		</isEqual>
+	</select>
+	
+	<select id="getTDC10InfoForMembership" parameterClass="Param" resultClass="Param">
+		SELECT A.*, NVL(B.com_agr_yn, 'N') AS com_agr_yn
+		FROM IF_TDC10@CRM A, IF_TFS_POINT_FLAG B
+		WHERE A.n_cust_id = B.n_cust_id(+)
+		AND A.u_cust_yn = 'Y'
+		AND (A.u_cust_sece_yn = 'N' OR A.u_cust_sece_yn IS NULL)
+		AND A.anoth_offer_cond_yn = 'Y'
+		AND A.conninfo = #conninfo#
+		AND ROWNUM = 1
+	</select>	
+</sqlMap>

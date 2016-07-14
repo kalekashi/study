@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="TesterReview"> 
+	<resultMap id="TesterReviewInfo" class="Param">
+		<result property="master_seq" column="master_seq"></result>
+		<result property="review_seq" column="review_seq"></result>
+		<result property="contents" column="contents" jdbcType="CLOB" javaType="java.lang.String"></result>
+		<result property="title" column="title"></result>
+		<result property="hit" column="hit"></result>
+		<result property="best_yn" column="best_yn"></result>
+		<result property="status" column="status"></result>
+		<result property="url" column="url"></result>
+		<result property="score" column="score"></result>
+		<result property="mem_id" column="mem_id"></result>
+		<result property="comment_cnt" column="comment_cnt"></result>
+		<result property="regist_date" column="regist_date"></result>
+		<result property="best_img" column="best_img"></result>
+		<result property="best_order" column="best_order"></result>
+		<result property="image_name" column="image_name"></result>
+		<result property="age" column="age"></result>
+	</resultMap>
+
+	<select id="getList" resultMap="TesterReviewInfo" parameterClass="Param">
+		<![CDATA[
+		SELECT * 
+		  FROM 
+		       (SELECT 
+		              /*+index_desc(a pk_tester_review) use_nl(a b) ordered */ 
+		              ROWNUM rnum, 
+		              a.master_seq, 
+		              a.review_seq, 
+		              a.contents, 
+		              a.title, 
+		              a.hit, 
+		              a.best_yn, 
+		              a.status,
+		              a.url, 
+		              a.score, 
+		              a.mem_id, 
+		              a.age, 
+		              TO_CHAR(a.regist_date, 'yyyy.mm.dd') regist_date, 
+		              (SELECT count(*) 
+		                FROM t_tester_review_comment 
+		               WHERE a.review_seq = review_seq
+		                 AND status = 'S'
+		              ) comment_cnt,
+		              a.best_img,
+		              a.best_order,
+		              a.image_name             
+		         FROM t_tester_review a 
+		        WHERE a.master_seq = #master_seq# 
+	              AND a.status = 'S' 
+		]]>
+		<isEqual property="mode" compareValue="B">
+	              AND best_yn = 'Y'
+		</isEqual>               
+		<![CDATA[
+	              AND ROWNUM <= #POS_END# 
+		       ) 
+		 WHERE rnum > #POS_STA#
+		]]>
+		<isEqual property="mode" compareValue="B">
+	              ORDER BY best_order ASC
+		</isEqual> 
+  	</select>
+
+	<select id="getListCount" parameterClass="Param" resultClass="Integer">  
+		<![CDATA[
+		 SELECT count(*)
+           FROM t_tester_review a 
+          WHERE a.master_seq = #master_seq# 
+            AND a.status = 'S' 
+		]]>
+		<isEqual property="mode" compareValue="B">
+            AND a.best_yn = 'Y'
+		</isEqual>               
+	</select>
+
+	<select id="getInfo" resultMap="TesterReviewInfo" parameterClass="Param">
+		 SELECT a.master_seq, a.review_seq, a.contents, a.title, a.hit, a.best_yn, a.status, a.url, a.score, 
+        		a.mem_id, TO_CHAR(a.regist_date, 'yyyy.mm.dd') regist_date,a.image_name, age,
+            	(select count(*) from t_tester_review_COMMENT where a.review_seq = review_seq) comment_cnt, best_img, best_order
+		 FROM t_tester_review a
+		 WHERE a.master_seq = #master_seq#
+		    AND a.review_seq = #review_seq#
+		    AND a.status = 'S' 
+	</select>
+
+	<select id="getNextSeq" resultClass="Integer">
+		 SELECT seq_tester_review.NEXTVAL
+		   FROM dual
+	</select>
+	
+	<insert id="insert" parameterClass="Param">
+		 INSERT
+		   INTO t_tester_review
+		    (
+		        master_seq,
+		        review_seq,
+		        title,
+		        score,
+		        url,
+		        contents,
+		        hit,
+		        best_yn,
+		        status,
+		        mem_id,
+		        age,
+		        image_name,
+		        regist_date
+		    )
+		    VALUES
+		    (
+		        #master_seq#,
+		        #review_seq#,
+		        #title#,
+		        #score#,
+		        #url#,
+		        #contents#,
+		        0,
+		        'N',
+		        'S',
+		        #mem_id#,
+		        #age#,
+		        #image_name#,
+		        SYSDATE
+		    )
+	</insert>
+
+	<update id="update" parameterClass="Param">
+		UPDATE t_tester_review
+		   SET title           = #title#,
+			   score           = #score#,
+			   url             = #url#,
+		       contents        = #contents#,
+		       image_name        = #image_name#
+		 WHERE review_seq = #review_seq#
+		   AND mem_id = #mem_id# 
+	</update>
+
+	<update id="delete" parameterClass="Param">
+		UPDATE t_tester_review
+		   SET status = 'D'
+		 WHERE review_seq = #review_seq#
+		   AND mem_id = #mem_id# 
+	</update>
+	
+	<update id="increaseHit" parameterClass="Integer">
+		UPDATE t_tester_review
+		SET    hit    = hit + 1
+		WHERE  review_seq = #value#
+	</update>
+	
+	<insert id="insertFeature" parameterClass="Param">
+		 INSERT
+		   INTO t_tester_review_feature
+		    (
+		        review_seq,
+		        rank,
+		        code1,
+		        code2,
+		        wdate
+		    )
+		    (
+            	SELECT 
+		        #review_seq#,
+		        1,
+		        code1,
+		        code2,
+		        SYSDATE
+				FROM T_MEM_INFORMATION 
+				WHERE mem_id = #mem_id#
+				AND code1 = '71' 
+				AND ROWNUM = 1
+		    ) 
+	</insert>
+	<insert id="insertFeature2" parameterClass="Param">
+		 INSERT
+		   INTO t_tester_review_feature
+		    (
+		        review_seq,
+		        rank,
+		        code1,
+		        code2,
+		        wdate
+		    )
+		    (
+            	SELECT 
+		        #review_seq#,
+		        3,
+		        code1,
+		        code2,
+		        SYSDATE
+				FROM T_MEM_INFORMATION 
+				WHERE mem_id = #mem_id#
+				AND code1 = '73' 
+				AND ROWNUM = 1
+		    ) 
+	</insert>		
+	
+	<select id="getFeatureList" resultClass="Param" parameterClass="String">
+		<![CDATA[
+		SELECT a.review_seq, a.code1, a.code2, b.name2, a.rank FROM t_tester_review_feature a, t_code2 b
+		WHERE a.code1 = b.code1
+		  AND a.code2 = b.code2
+		  AND b.status = 'S'
+		  and review_seq = #review_seq#
+		  AND a.RANK > 0 
+		  order by a.rank
+		]]>
+	</select>		
+
+</sqlMap>

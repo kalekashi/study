@@ -1,0 +1,245 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+ 
+<sqlMap namespace="BeautyKin"> 
+	<resultMap id="List" class="Param">
+		<result property="question_seq" column="question_seq"></result>
+		<result property="site_code" column="site_code"></result>
+		<result property="question" column="question" jdbcType="CLOB" javaType="java.lang.String"></result>
+		<result property="image_name" column="image_name"></result>
+		<result property="hit" column="hit"></result>
+		<result property="status" column="status"></result>
+		<result property="mem_id" column="mem_id"></result>
+		<result property="regist_date" column="regist_date"></result>
+		<result property="type" column="type"></result>
+		<result property="yes" column="yes"></result>
+		<result property="no" column="no"></result>
+		<result property="cate_seq" column="cate_seq"></result>
+		<result property="cate_name" column="cate_name"></result>
+		<result property="recommend_cnt" column="recommend_cnt"></result>
+		<result property="prodImg" column="prodImg"></result>
+		<result property="answer_cnt" column="answer_cnt"></result>
+		<result property="dpid" column="dpid"></result>
+	</resultMap>
+    
+	<select id="getList" resultMap="List" parameterClass="Param">
+	     SELECT *
+		   FROM (
+				 SELECT
+		<isNotEmpty property="sort">
+			<isEqual property="sort" compareValue="recommend">
+					    row_number() over (order by p.recommend_cnt DESC, p.question_seq DESC) rnum,
+			</isEqual>
+		</isNotEmpty>		
+		<isEmpty property="sort">
+					    row_number() over (order by p.question_seq DESC) rnum,
+		</isEmpty>
+		<![CDATA[
+					p.*
+				   FROM (
+						 SELECT
+							    a.question_seq,
+							    a.site_code, 
+							    a.question, 
+							    a.image_name,
+							    a.hit, 
+							    a.status, 
+							    a.mem_id,
+							    TO_CHAR(a.regist_date, 'yyyy.mm.dd') regist_date,
+								a.type, a.yes, a.no, a.cate_seq, a.dpid,
+								(SELECT cate_name FROM T_CATE WHERE cate_seq = a.cate_seq) cate_name,
+								(SELECT COUNT(*) 
+								   FROM t_beauty_kin_recommend_log 
+								  WHERE question_seq = a.question_seq
+								    AND seq > 0
+								) recommend_cnt,
+						        (SELECT COUNT(*) 
+						           FROM t_answer 
+						          WHERE question_seq = a.question_seq
+						            AND status = 'S'
+						            and board_cd = '03'
+						        ) answer_cnt, 								
+								(SELECT (image_path || image_name)  FROM T_PRODUCT_IMAGE WHERE seq = 1 and dpid = a.dpid AND image_code = '03') prodImg
+						   FROM t_beauty_kin_question a
+						  WHERE a.question_seq > 0
+						   and a.status = 'S'
+		]]>
+		<isNotEmpty property="site_code">
+							AND a.site_code = #site_code#
+		</isNotEmpty>
+		<isNotEmpty property="type">
+							AND a.type = #type#
+		</isNotEmpty>		
+	    <isNotEmpty property="mem_id">
+				        	AND a.mem_id = #mem_id#
+	    </isNotEmpty>
+	    <isNotEmpty property="cate_seq">
+				        	AND a.cate_seq = #cate_seq#
+	    </isNotEmpty>	    
+	    <isNotEmpty property="question">
+				        	AND a.question like '%' || #question# || '%'
+	    </isNotEmpty>
+		<![CDATA[
+					) p
+		    )
+		  WHERE rnum <= #POS_END#
+		    AND rnum > #POS_STA#
+		]]>
+  	</select>
+
+	<select id="getListCount" parameterClass="Param" resultClass="Integer">
+		<![CDATA[
+		 SELECT count(*)
+		   FROM t_beauty_kin_question a
+		  WHERE a.status = 'S'
+		]]>
+		<isNotEmpty property="site_code">
+			AND a.site_code = #site_code#
+		</isNotEmpty>
+		<isNotEmpty property="type">
+			AND a.type = #type#
+		</isNotEmpty>				
+	    <isNotEmpty property="mem_id">
+			AND a.mem_id = #mem_id#
+	    </isNotEmpty>
+	    <isNotEmpty property="cate_seq">
+			AND a.cate_seq = #cate_seq#
+	    </isNotEmpty>	    	    
+	    <isNotEmpty property="question">
+        	AND a.question like '%' || #question# || '%'
+	    </isNotEmpty>
+	</select>
+
+	<resultMap id="questionInfo" class="Param">
+		<result property="question_seq" column="question_seq"></result>
+		<result property="site_code" column="site_code"></result>
+		<result property="question" column="question" jdbcType="CLOB" javaType="java.lang.String"></result>
+		<result property="image_name" column="image_name"></result>
+		<result property="hit" column="hit"></result>
+		<result property="status" column="status"></result>
+		<result property="mem_id" column="mem_id"></result>
+		<result property="regist_date" column="regist_date"></result>
+		<result property="type" column="type"></result>
+		<result property="yes" column="yes"></result>
+		<result property="no" column="no"></result>		
+		<result property="cate_seq" column="cate_seq"></result>		
+		<result property="prodImg" column="prodImg"></result>		
+		<result property="answer_cnt" column="answer_cnt"></result>		
+		<result property="dpid" column="dpid"></result>		
+	</resultMap>
+
+	<select id="getInfo" resultMap="questionInfo" parameterClass="Param">
+		<![CDATA[
+		 SELECT a.question_seq,
+		        a.site_code,
+			    a.question,
+			    a.image_name,
+			    a.hit,
+			    a.status,
+			    a.mem_id,
+			    TO_CHAR(a.regist_date, 'yyyy.mm.dd') regist_date,
+			    a.type, a.yes, a.no, a.cate_seq, a.dpid,
+				(SELECT cate_name FROM T_CATE WHERE cate_seq = a.cate_seq) cate_name,
+				(SELECT (image_path || image_name)  FROM T_PRODUCT_IMAGE WHERE seq = 1 and dpid = a.dpid AND image_code = '03') prodImg,
+		        (SELECT COUNT(*) 
+		           FROM t_answer 
+		          WHERE question_seq = a.question_seq
+		            AND status = 'S'
+		            and board_cd = '03'
+		        ) answer_cnt				
+		   FROM t_beauty_kin_question a
+		  WHERE a.question_seq = #question_seq#
+		    and a.status = 'S'
+		]]>
+		<isNotEmpty property="site_code">
+			AND a.site_code    = #site_code#
+		</isNotEmpty>
+		<isNotEmpty property="type">
+			AND a.type = #type#
+		</isNotEmpty>				
+	</select>
+
+	<insert id="insert" parameterClass="Param">
+		 INSERT
+		   INTO t_beauty_kin_question
+		    (
+		        question_seq,
+		        site_code,
+		        question,
+		        image_name,
+		        hit,
+		        status,
+		        mem_id,
+		        dpid,
+		        cate_seq,
+		        type,
+		        regist_date
+		    )
+		    VALUES
+		    (
+		        seq_beauty_kin_question.NEXTVAL,
+		        #site_code#,
+		        #question#,
+		        #image_name#,
+		        0,
+		        'S',
+		        #mem_id#,
+		        #dpid#,
+		        #cate_seq#,
+		        #type#,
+		        SYSDATE
+		    )
+	</insert>
+
+	<update id="update" parameterClass="Param">
+		UPDATE t_beauty_kin_question
+		   SET question       = #question#
+		     , image_name     = #image_name#
+		     , dpid       = #dpid#
+		     , cate_seq       = #cate_seq#
+		     , type       = #type#
+		 WHERE question_seq = #question_seq#
+		   AND mem_id   = #mem_id#
+	</update>
+
+	<update id="delete" parameterClass="Param">
+		UPDATE t_beauty_kin_question
+		   SET status       = 'D'
+		 WHERE question_seq = #question_seq#
+		   AND mem_id   = #mem_id#
+	</update>
+
+	<update id="increaseHit" parameterClass="Param">
+		UPDATE t_beauty_kin_question
+		   SET hit          = hit + 1
+		 WHERE question_seq = #question_seq#
+	</update>
+	
+	<update id="increaseYes" parameterClass="Param">
+		UPDATE t_beauty_kin_question
+		   SET yes          = yes + 1
+		 WHERE question_seq = #question_seq#
+	</update>
+	
+	<update id="increaseNo" parameterClass="Param">
+		UPDATE t_beauty_kin_question
+		   SET no          = no + 1
+		 WHERE question_seq = #question_seq#
+	</update>
+	
+	<insert id="insertRecommendLog" parameterClass="Param"> 
+		insert into T_BEAUTY_KIN_RECOMMEND_LOG(seq, question_seq, mem_id, type, vote_yn, regist_date)
+		values((SELECT NVL(MAX(seq), 0) + 1 FROM T_BEAUTY_KIN_RECOMMEND_LOG where question_seq = #question_seq#), #question_seq#, #mem_id#, #type#, #vote_yn#, sysdate)
+	</insert>	
+				
+	<select id="isLikeExists" parameterClass="Param" resultClass="Integer">
+		SELECT COUNT(*)
+		  FROM T_BEAUTY_KIN_RECOMMEND_LOG
+		 WHERE question_seq = #question_seq#
+		   and mem_id = #mem_id#
+		   AND type = #type#
+		   AND trunc(regist_date) = trunc(sysdate)
+	</select>					
+				
+				
+</sqlMap>

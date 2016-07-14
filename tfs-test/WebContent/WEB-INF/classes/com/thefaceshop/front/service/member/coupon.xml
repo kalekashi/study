@@ -1,0 +1,722 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="Coupon">
+	<select id="getCouponZoneList" parameterClass="Param" resultClass="Param">
+		<![CDATA[
+		SELECT A.COUPON_SEQ,
+			   A.COUPON_TYPE,
+			   A.COUPON_NAME,
+			   A.DEVICE_TYPE,
+			   A.SALE_TYPE,
+			   A.SALE_AMT,
+			   A.MIN_PRICE,
+			   A.SALE_MAX,
+			   TO_CHAR(A.START_DATE, 'YYYY.MM.DD') START_DATE,
+			   TO_CHAR(A.END_DATE, 'YYYY.MM.DD') END_DATE,
+	           (
+	         	SELECT LISTAGG(C.NAME2, ',') WITHIN GROUP (ORDER BY G.GRADE_CODE) AS GRADE_NAME
+				  FROM T_COUPON_APPLY_GRADE G, T_CODE2 C
+				 WHERE G.GRADE_CODE = C.CODE2
+				   AND C.CODE1 = '02'
+				   AND G.COUPON_SEQ = A.COUPON_SEQ
+	           ) GRADE_NAME
+		  FROM T_COUPON A
+		 WHERE A.SITE_CODE = #site_code#
+		   AND A.START_DATE <= SYSDATE
+		   AND A.END_DATE >= SYSDATE
+		   AND A.STATUS = 'S'
+		   AND A.DOWNLOAD_YN = 'Y'
+		]]>
+	</select>
+	
+	<select id="getCouponInfo" parameterClass="java.lang.String" resultClass="Param">
+		<![CDATA[
+		SELECT A.COUPON_SEQ,
+			   A.COUPON_TYPE,
+			   A.COUPON_NAME,
+			   A.DEVICE_TYPE,
+			   A.SALE_TYPE,
+			   A.SALE_AMT,
+			   A.MIN_PRICE,
+			   A.SALE_MAX,
+			   A.SITE_CODE,
+			   A.STATUS,
+			   A.PERIOD,
+			   TO_CHAR(A.START_DATE, 'YYYY.MM.DD') START_DATE,
+			   TO_CHAR(A.END_DATE, 'YYYY.MM.DD') END_DATE,
+	           (
+	         	SELECT LISTAGG(C.NAME2, ',') WITHIN GROUP (ORDER BY G.GRADE_CODE) AS GRADE_NAME
+				  FROM T_COUPON_APPLY_GRADE G, T_CODE2 C
+				 WHERE G.GRADE_CODE = C.CODE2
+				   AND C.CODE1 = '02'
+				   AND G.COUPON_SEQ = A.COUPON_SEQ
+	           ) GRADE_NAME,
+	           (
+	         	SELECT LISTAGG(G.GRADE_CODE, ',') WITHIN GROUP (ORDER BY G.GRADE_CODE) AS GRADE_CODE
+				  FROM T_COUPON_APPLY_GRADE G
+				 WHERE G.COUPON_SEQ = A.COUPON_SEQ
+	           ) GRADE_CODE
+		  FROM T_COUPON A
+		 WHERE A.COUPON_SEQ = #coupon_seq#
+		   and a.status = 'S'
+		]]>
+	</select>
+	
+	<select id="getDownloadableList" parameterClass="Param" resultClass="Param">
+	 SELECT *
+	   FROM
+	    (
+	        /*자신의 등급과 매핑된 쿠폰*/
+	         SELECT p.coupon_seq,
+	            p.coupon_type,
+	            p.coupon_name,
+	            p.sale_type,
+	            p.sale_amt,
+	            p.min_price,
+	            p.sale_max,
+                TO_CHAR(p.start_date, 'yyyy.mm.dd') start_date,
+                TO_CHAR(p.end_date, 'yyyy.mm.dd') end_date
+	           FROM t_coupon p,
+	            t_coupon_apply_grade g
+	          WHERE p.coupon_seq   = g.coupon_seq
+	            AND g.grade_code   = #grade_code#
+	            AND p.status       = 'S'
+	            AND p.download_yn  = 'Y'
+	            AND p.start_date   <![CDATA[<]]> sysdate
+	            AND p.end_date     > sysdate
+	            AND p.site_code    = #site_code#
+		<isNotEmpty property="coupon_type_list">	            
+	            AND p.coupon_type IN (
+		    	<iterate property="coupon_type_list" conjunction=",">
+		    		#coupon_type_list[]#
+		    	</iterate>
+	            )
+		</isNotEmpty>
+	      <isNotEmpty property="dpid">
+	      INTERSECT
+	            (
+	            	/*제품과 매핑된 쿠폰*/
+	                 SELECT p.coupon_seq,
+	                    p.coupon_type,
+	                    p.coupon_name,
+	                    p.sale_type,
+	                    p.sale_amt,
+	                    p.min_price,
+	                    p.sale_max,
+	                    TO_CHAR(p.start_date, 'yyyy.mm.dd') start_date,
+	                    TO_CHAR(p.end_date, 'yyyy.mm.dd') end_date
+	                   FROM t_coupon p, t_coupon_apply_product pp, t_product_display dp
+	                  WHERE p.coupon_seq = pp.coupon_seq
+	                    AND pp.dpid = dp.dpid
+	                    AND p.status       = 'S'
+	            		AND p.download_yn  = 'Y'
+	                    AND p.start_date   <![CDATA[<]]> sysdate
+	                    AND p.end_date     > sysdate
+	                    AND pp.sale_yn	   = 'Y'
+	                    AND p.site_code    = #site_code#
+                        AND dp.status    = 'S'
+                        AND dp.coupon_yn = 'Y'
+	                    AND pp.dpid		   = #dpid#
+	                    AND p.coupon_type <![CDATA[<]]>> '03'
+					<isNotEmpty property="coupon_type_list">	            
+			            AND p.coupon_type IN (
+				    	<iterate property="coupon_type_list" conjunction=",">
+				    		#coupon_type_list[]#
+				    	</iterate>
+			            )
+			      	</isNotEmpty>
+	                  UNION
+	                 /*분류와 매핑된 쿠폰*/
+	                 SELECT p.coupon_seq,
+	                    p.coupon_type,
+	                    p.coupon_name,
+	                    p.sale_type,
+	                    p.sale_amt,
+	                    p.min_price,
+	                    p.sale_max,
+	                    TO_CHAR(p.start_date, 'yyyy.mm.dd') start_date,
+	                    TO_CHAR(p.end_date, 'yyyy.mm.dd') end_date
+	                   FROM t_coupon p,
+					    t_coupon_apply_cate s,
+					    (
+					         SELECT rownum rnum,
+					            sys_connect_by_path(x.cate_seq, '|') || '|' path,
+					            x.*
+					           FROM t_cate x
+					            START WITH x.p_cate_seq     = 0
+					            CONNECT BY prior x.cate_seq = x.p_cate_seq
+					    )
+					    pt,
+	                    t_product_cate t,
+	                    t_product_display dp
+	                  WHERE p.coupon_seq   = s.coupon_seq
+	                    AND pt.cate_seq     = t.cate_seq
+	                    AND t.dpid         = dp.dpid
+					    AND instr(pt.path, '|' || s.cate_seq || '|') > 0
+	                    AND t.dpid         = #dpid#
+	                    AND p.status       = 'S'
+	            		AND p.download_yn  = 'Y'
+	                    AND dp.status      = 'S'
+	                    AND dp.coupon_yn   = 'Y'
+	                    AND p.start_date   <![CDATA[<]]> sysdate
+	                    AND p.end_date     > sysdate
+	                    AND p.site_code    = #site_code#
+	                    AND p.coupon_type <![CDATA[<]]>> '03'
+					<isNotEmpty property="coupon_type_list">	            
+			            AND p.coupon_type IN (
+				    	<iterate property="coupon_type_list" conjunction=",">
+				    		#coupon_type_list[]#
+				    	</iterate>
+			            )
+			       	</isNotEmpty>
+	            )
+			</isNotEmpty>
+	    )
+	  WHERE coupon_seq NOT IN
+	    (
+	         SELECT coupon_seq 
+	           FROM t_mem_downloaded_coupon 
+	          WHERE mem_id = #mem_id#
+	    ) 
+	</select>
+	
+	<select id="getUsableList" parameterClass="Param" resultClass="Param">
+                /*제품과 매핑된 쿠폰*/
+                 SELECT mem.seq mem_seq,
+                 		p.coupon_seq,
+	                    p.coupon_type,
+	                    p.coupon_name,
+	                    p.sale_type,
+	                    p.sale_amt,
+	                    p.min_price,
+	                    p.min_qty,
+	                    p.sale_max,
+	                    p.end_date
+                   FROM t_coupon p,
+                   		t_coupon_apply_grade grade,
+                   		t_mem_downloaded_coupon mem
+                  WHERE p.coupon_seq = mem.coupon_seq
+                    AND p.coupon_seq = grade.coupon_seq
+                    AND p.coupon_seq IN
+                    (
+                         SELECT pp.coupon_seq
+                           FROM t_coupon_apply_product pp,
+                            t_product_display dp
+                          WHERE pp.dpid      = dp.dpid
+                            AND dp.status    = 'S'
+                            AND dp.coupon_yn = 'Y'
+                            AND pp.dpid     IN (
+					    	<iterate property="dpid_list" conjunction=",">
+					    		#dpid_list[]#
+					    	</iterate>
+                            )
+                       GROUP BY pp.coupon_seq, pp.apply_seq
+                        HAVING COUNT(*) =
+                            (
+                                 SELECT COUNT(*)
+                                   FROM t_coupon_apply_product
+                                  WHERE coupon_seq = pp.coupon_seq
+                                    AND apply_seq = pp.apply_seq
+                            )
+                            AND SUM(
+                                CASE
+                                    WHEN pp.dpid       = #dpid#
+                                        AND pp.sale_yn = 'Y'
+                                    THEN 1
+                                    ELSE 0
+                                END) > 0
+                    )
+                    AND p.status       = 'S'
+                    AND mem.start_date   <![CDATA[<]]> sysdate
+                    AND mem.end_date     > sysdate
+                    AND p.site_code    = #site_code#
+                    AND grade.grade_code   = #grade_code#
+                    AND p.device_type IN ('A', #device_type#)
+                    AND p.coupon_type IN ('01', '02')
+				    AND mem.mem_id = #mem_id#
+				    AND mem.orderid IS NULL
+                  UNION
+                /*분류와 매핑된 쿠폰*/
+                 SELECT mem.seq mem_seq,
+                 		p.coupon_seq,
+	                    p.coupon_type,
+	                    p.coupon_name,
+	                    p.sale_type,
+	                    p.sale_amt,
+	                    p.min_price,
+	                    p.min_qty,
+	                    p.sale_max,
+	                    p.end_date
+                   FROM t_coupon p,
+                   		t_coupon_apply_grade grade,
+                   		t_mem_downloaded_coupon mem,
+					    t_coupon_apply_cate s,
+					    (
+					         SELECT rownum rnum,
+					            sys_connect_by_path(x.cate_seq, '|') || '|' path,
+					            x.*
+					           FROM t_cate x
+					            START WITH x.p_cate_seq     = 0
+					            CONNECT BY prior x.cate_seq = x.p_cate_seq
+					    )
+					    pt,
+	                    t_product_cate t,
+	                    t_product_display dp
+                  WHERE p.coupon_seq = mem.coupon_seq
+                    AND p.coupon_seq = grade.coupon_seq
+                    AND p.coupon_seq   = s.coupon_seq
+                    AND pt.cate_seq     = t.cate_seq
+                    AND t.dpid         = dp.dpid
+				    AND instr(pt.path, '|' || s.cate_seq || '|') > 0
+                    AND t.dpid         = #dpid#
+                    AND p.status       = 'S'
+                    AND dp.status      = 'S'
+                    AND dp.coupon_yn   = 'Y'
+                    AND mem.start_date   <![CDATA[<]]> sysdate
+                    AND mem.end_date     > sysdate
+                    AND p.site_code    = #site_code#
+                    AND grade.grade_code   = #grade_code#
+                    AND p.device_type IN ('A', #device_type#)
+                    AND p.coupon_type IN ('01', '02')
+				    AND mem.mem_id = #mem_id#
+				    AND mem.orderid IS NULL
+	</select>
+	
+	<select id="getCartUsableList" parameterClass="Param" resultClass="Param">
+                /*제품과 매핑된 쿠폰*/
+                 SELECT mem.seq mem_seq,
+						p.coupon_seq,
+	                    p.coupon_type,
+	                    p.coupon_name,
+	                    p.sale_type,
+	                    p.sale_amt,
+	                    p.min_price,
+	                    p.min_qty,
+	                    p.sale_max,
+			            p.dupe_yn,
+	                    p.end_date
+                   FROM t_coupon p,
+                   		t_coupon_apply_grade grade,
+                   		t_mem_downloaded_coupon mem
+                  WHERE p.coupon_seq = mem.coupon_seq
+                    AND p.coupon_seq = grade.coupon_seq
+                    AND p.coupon_seq IN
+                    (
+                         SELECT pp.coupon_seq
+                           FROM t_coupon_apply_product pp,
+                            t_product_display dp
+                          WHERE pp.dpid      = dp.dpid
+                            AND dp.status    = 'S'
+                            AND dp.coupon_yn = 'Y'
+                            AND pp.dpid     IN (
+					    	<iterate property="dpid_list" conjunction=",">
+					    		#dpid_list[]#
+					    	</iterate>
+                            )
+                       GROUP BY pp.coupon_seq,
+                            pp.apply_seq
+                        HAVING COUNT(*) =
+                            (
+                                 SELECT COUNT(*)
+                                   FROM t_coupon_apply_product
+                                  WHERE coupon_seq = pp.coupon_seq
+                                    And apply_seq = pp.apply_seq
+                            )
+                    )
+                    AND p.status       = 'S'
+                    AND mem.start_date   <![CDATA[<]]> sysdate
+                    AND mem.end_date     > sysdate
+                    AND p.site_code    = #site_code#
+                    AND p.device_type IN ('A', #device_type#)
+                    AND p.coupon_type  = '04'
+                    AND grade.grade_code   = #grade_code#
+				    AND mem.mem_id = #mem_id#
+				    AND mem.orderid IS NULL
+                  UNION
+
+                /*분류와 매핑된 쿠폰*/
+                 SELECT mem.seq mem_seq,
+               				p.coupon_seq,
+	                    p.coupon_type,
+	                    p.coupon_name,
+	                    p.sale_type,
+	                    p.sale_amt,
+	                    p.min_price,
+	                    p.min_qty,
+	                    p.sale_max,
+			            p.dupe_yn,
+	                    p.end_date
+                   FROM t_coupon p,
+                   		t_coupon_apply_grade grade,
+                   		t_mem_downloaded_coupon mem,
+					    t_coupon_apply_cate s,
+					    (
+					         SELECT rownum rnum,
+					            sys_connect_by_path(x.cate_seq, '|') || '|' path,
+					            x.*
+					           FROM t_cate x
+					            START WITH x.p_cate_seq     = 0
+					            CONNECT BY prior x.cate_seq = x.p_cate_seq
+					    )
+					    pt,
+	                    t_product_cate t,
+	                    t_product_display dp
+                  WHERE p.coupon_seq = mem.coupon_seq
+                    AND p.coupon_seq = grade.coupon_seq
+                    AND p.coupon_seq   = s.coupon_seq
+                    AND pt.cate_seq     = t.cate_seq
+                    AND t.dpid         = dp.dpid
+				    AND instr(pt.path, '|' || s.cate_seq || '|') > 0
+                    AND t.dpid        IN (
+			    	<iterate property="dpid_list" conjunction=",">
+			    		#dpid_list[]#
+			    	</iterate>
+					)
+                    AND p.status       = 'S'
+                    AND dp.status      = 'S'
+                    AND dp.coupon_yn   = 'Y'
+                    AND mem.start_date   <![CDATA[<]]> sysdate
+                    AND mem.end_date     > sysdate
+                    AND p.site_code    = #site_code#
+                    AND grade.grade_code   = #grade_code#
+                    AND p.device_type IN ('A', #device_type#)
+                    AND p.coupon_type  = '04'
+				    AND mem.mem_id = #mem_id#
+				    AND mem.orderid IS NULL
+	</select>
+	
+	<select id="getCartAppliedProductList" parameterClass="Param" resultClass="Param">
+		 SELECT dpid
+		   FROM
+		    (
+		         SELECT dpid
+		           FROM t_coupon_apply_product
+		          WHERE coupon_seq = #coupon_seq#
+		          UNION
+		         SELECT dpid
+		           FROM t_coupon_apply_cate a,
+		            (
+		                 SELECT rownum rnum,
+		                    sys_connect_by_path(x.cate_seq, '|') || '|' path,
+		                    x.*
+		                   FROM t_cate x
+		                    START WITH x.p_cate_seq     = 0
+		                    CONNECT BY prior x.cate_seq = x.p_cate_seq
+		            )
+		            b,
+		            t_product_cate c
+		          WHERE instr(b.path, '|' || a.cate_seq || '|') > 0
+		            AND b.cate_seq                              = c.cate_seq
+		            AND a.coupon_seq                            = #coupon_seq#
+		    )
+		  WHERE dpid IN (
+	    	<iterate property="dpid_list" conjunction=",">
+	    		#dpid_list[]#
+	    	</iterate>
+		  )
+	</select>
+	
+	<select id="getDeliveryUsableList" parameterClass="Param" resultClass="Param">
+		 SELECT mem.seq mem_seq,
+		    p.coupon_seq,
+		    p.coupon_type,
+		    p.coupon_name,
+		    p.note,
+		    p.sale_type,
+		    p.sale_amt,
+		    p.min_price,
+		    p.min_qty,
+		    p.sale_max,
+		    mem.start_date,
+		    mem.end_date
+		   FROM t_coupon p,
+		    t_coupon_apply_grade g,
+		    t_mem_downloaded_coupon mem
+		  WHERE p.coupon_seq  = g.coupon_seq
+		    AND p.coupon_seq  = mem.coupon_seq
+		    AND p.status      = 'S'
+		    AND mem.start_date <![CDATA[<]]>> sysdate
+		    AND mem.end_date    > sysdate
+		    AND p.site_code   = #site_code#
+            AND p.device_type IN ('A', #device_type#)
+		    AND g.grade_code  = #grade_code#
+		    AND p.coupon_type = '03'
+		    AND mem.mem_id    = #mem_id#
+		    AND mem.orderid IS NULL
+	</select>
+	
+	<select id="getGiftUsableList" parameterClass="Param" resultClass="Param">
+                /*제품과 매핑된 쿠폰*/
+                 SELECT mem.seq mem_seq,
+                 		p.coupon_seq,
+	                    p.coupon_type,
+	                    p.coupon_name,
+	                    p.sale_type,
+	                    p.sale_amt,
+	                    p.min_price,
+	                    p.min_qty,
+	                    p.sale_max,
+			            p.dupe_yn,
+	                    p.end_date
+                   FROM t_coupon p,
+                   		t_coupon_apply_grade grade,
+                   		t_mem_downloaded_coupon mem
+                  WHERE p.coupon_seq = mem.coupon_seq
+                    AND p.coupon_seq = grade.coupon_seq
+                    AND p.coupon_seq IN
+                    (
+                         SELECT pp.coupon_seq
+                           FROM t_coupon_apply_product pp,
+                            t_product_display dp
+                          WHERE pp.dpid      = dp.dpid
+                            AND dp.status    = 'S'
+                            AND dp.coupon_yn = 'Y'
+                            AND pp.dpid     IN (
+					    	<iterate property="dpid_list" conjunction=",">
+					    		#dpid_list[]#
+					    	</iterate>
+                            )
+                       GROUP BY pp.coupon_seq,
+                            pp.apply_seq
+                        HAVING COUNT(*) =
+                            (
+                                 SELECT COUNT(*)
+                                   FROM t_coupon_apply_product
+                                  WHERE coupon_seq = pp.coupon_seq
+                                    AND apply_seq = pp.apply_seq
+                            )
+                    )
+                    AND p.status       = 'S'
+                    AND mem.start_date   <![CDATA[<]]> sysdate
+                    AND mem.end_date     > sysdate
+                    AND p.site_code    = #site_code#
+		            AND p.device_type IN ('A', #device_type#)
+                    AND p.coupon_type  = '05'
+                    AND grade.grade_code   = #grade_code#
+				    AND mem.mem_id = #mem_id#
+				    AND mem.orderid IS NULL
+                  UNION
+
+                /*분류와 매핑된 쿠폰*/
+                 SELECT mem.seq mem_seq,
+                 		p.coupon_seq,
+	                    p.coupon_type,
+	                    p.coupon_name,
+	                    p.sale_type,
+	                    p.sale_amt,
+	                    p.min_price,
+	                    p.min_qty,
+	                    p.sale_max,
+			            p.dupe_yn,
+	                    p.end_date
+                   FROM t_coupon p,
+                   		t_coupon_apply_grade grade,
+                   		t_mem_downloaded_coupon mem,
+					    t_coupon_apply_cate s,
+					    (
+					         SELECT rownum rnum,
+					            sys_connect_by_path(x.cate_seq, '|') || '|' path,
+					            x.*
+					           FROM t_cate x
+					            START WITH x.p_cate_seq     = 0
+					            CONNECT BY prior x.cate_seq = x.p_cate_seq
+					    )
+					    pt,
+	                    t_product_cate t,
+	                    t_product_display dp
+                  WHERE p.coupon_seq = mem.coupon_seq
+                    AND p.coupon_seq = grade.coupon_seq
+                    AND p.coupon_seq   = s.coupon_seq
+                    AND pt.cate_seq     = t.cate_seq
+                    AND t.dpid         = dp.dpid
+				    AND instr(pt.path, '|' || s.cate_seq || '|') > 0
+                    AND t.dpid        IN (
+			    	<iterate property="dpid_list" conjunction=",">
+			    		#dpid_list[]#
+			    	</iterate>
+					)
+                    AND p.status       = 'S'
+                    AND dp.status      = 'S'
+                    AND dp.coupon_yn   = 'Y'
+                    AND mem.start_date   <![CDATA[<]]> sysdate
+                    AND mem.end_date     > sysdate
+                    AND p.site_code    = #site_code#
+		            AND p.device_type IN ('A', #device_type#)
+                    AND p.coupon_type  = '05'
+                    AND grade.grade_code   = #grade_code#
+				    AND mem.mem_id = #mem_id#
+				    AND mem.orderid IS NULL
+	</select>
+
+	<select id="isExistsDownloaded" parameterClass="Param" resultClass="Integer">
+		SELECT COUNT(*) 
+		  FROM t_mem_downloaded_coupon
+		 WHERE mem_id = #mem_id# 
+		   AND coupon_seq = #coupon_seq#
+		<isEqual property="grade_coupon" compareValue="Y">
+			<![CDATA[
+		   AND start_date <= SYSDATE
+		   AND end_date >= TRUNC(SYSDATE)
+			]]>
+		</isEqual>
+	</select>
+	
+	<insert id="insertDownloaded" parameterClass="Param">
+		INSERT INTO t_mem_downloaded_coupon
+			(
+				mem_id,
+				seq,
+				coupon_seq,
+				regist_date,
+				start_date,
+				end_date
+			)
+		VALUES
+			(
+				#mem_id#,
+				(SELECT NVL(MAX(seq), 0) + 1 FROM t_mem_downloaded_coupon WHERE mem_id = #mem_id#),
+				#coupon_seq#,
+				SYSDATE,
+		<isNotEmpty property="start_date">
+				TO_DATE(#start_date#, 'YYYYMMDD'),
+		</isNotEmpty> 
+		<isEmpty property="start_date">
+				(SELECT START_DATE FROM T_COUPON WHERE COUPON_SEQ = #coupon_seq#),
+		</isEmpty>
+		<isNotEmpty property="end_date">
+				TO_DATE(#end_date#, 'YYYYMMDDHH24MISS')
+		</isNotEmpty>
+		<isEmpty property="end_date">
+				(SELECT DECODE(PERIOD, NULL, END_DATE, SYSDATE + PERIOD) FROM T_COUPON WHERE COUPON_SEQ = #coupon_seq#)
+		</isEmpty>
+			)
+	</insert>
+	
+	<select id="getCouponCount" resultClass="Integer" parameterClass="Param">
+	<![CDATA[
+		 SELECT COUNT(*)
+		   FROM T_COUPON P,
+			    T_COUPON_APPLY_GRADE G,
+			    T_MEM_DOWNLOADED_COUPON MEM
+		  WHERE P.COUPON_SEQ  = G.COUPON_SEQ
+		    AND P.COUPON_SEQ  = MEM.COUPON_SEQ
+		    AND P.STATUS      = 'S'
+		    AND MEM.START_DATE <= SYSDATE
+		    AND MEM.END_DATE   >= TRUNC(SYSDATE)
+		    AND P.SITE_CODE   = #site_code#
+		    AND G.GRADE_CODE  = #grade_code#
+		    AND MEM.MEM_ID    = #mem_id#
+		    /*즉시 지급 관련 하드코딩 - 시작*/
+		    AND mem.coupon_seq not in('333', '345', '348', '349', '350')
+		    /*즉시 지급 관련 하드코딩 - 끝*/
+		    AND MEM.ORDERID IS NULL
+	]]>
+	</select>
+
+	<update id="updateDownloaded" parameterClass="Param">
+		UPDATE t_mem_downloaded_coupon
+		   SET orderid = #orderid#,
+			   ship_seq = #ship_seq#,
+			   item_seq = #item_seq#
+		 WHERE mem_id = #mem_id#
+		   AND seq = #seq#
+		   AND coupon_seq = #coupon_seq#
+		   AND orderid IS NULL
+	</update>
+	
+	<delete id="deleteCoupon" parameterClass="Param">
+		delete t_mem_downloaded_coupon
+		 WHERE mem_id = #mem_id#
+		 <isNotEmpty property="seq">
+		   AND seq = #seq#		 
+		 </isNotEmpty>
+		   AND coupon_seq = #coupon_seq#
+		   AND orderid IS NULL
+	</delete>
+	
+	<select id="isAlreadyUse" parameterClass="Param" resultClass="String">
+		SELECT DECODE(orderid, NULL, 'N', 'Y') use_yn
+		  FROM t_mem_downloaded_coupon
+		 WHERE mem_id = #mem_id#
+		   AND seq = #seq#
+		   AND coupon_seq = #coupon_seq#
+	</select>
+	
+	<select id="getMyCouponList" parameterClass="Param" resultClass="Param">
+		<![CDATA[
+		 SELECT MEM.SEQ MEM_SEQ,
+			    P.COUPON_SEQ,
+			    P.COUPON_TYPE,
+			    P.COUPON_NAME,
+			    P.NOTE,
+			    P.SALE_TYPE,
+			    P.SALE_AMT,
+			    P.MIN_PRICE,
+			    P.MIN_QTY,
+			    P.SALE_MAX,
+			    TO_CHAR(MEM.START_DATE, 'YYYY.MM.DD') START_DATE,
+			    TO_CHAR(MEM.END_DATE, 'YYYY.MM.DD') END_DATE
+		   FROM T_COUPON P,
+			    T_COUPON_APPLY_GRADE G,
+			    T_MEM_DOWNLOADED_COUPON MEM
+		  WHERE P.COUPON_SEQ  = G.COUPON_SEQ
+		    AND P.COUPON_SEQ  = MEM.COUPON_SEQ
+		    AND P.STATUS      = 'S'
+		    AND MEM.START_DATE <= SYSDATE
+		    AND MEM.END_DATE   >= TRUNC(SYSDATE)
+		    AND P.SITE_CODE   = #site_code#
+		    AND G.GRADE_CODE  = #grade_code#
+		    AND MEM.MEM_ID    = #mem_id#
+		    /*즉시 지급 관련 하드코딩 - 시작*/
+		    AND mem.coupon_seq not in('333', '345', '348', '349', '350')
+		    /*즉시 지급 관련 하드코딩 - 끝*/
+		    AND MEM.ORDERID IS NULL
+		]]>
+	</select>
+
+	<select id="getApplyCateList" parameterClass="Integer" resultClass="Param">
+		SELECT a.coupon_seq, a.cate_seq, b.cate_name,
+				(
+				     SELECT sys_connect_by_path(cate_name, '>') path
+				       FROM t_cate
+				      WHERE cate_seq              = a.cate_seq
+				 START WITH p_cate_seq     = 0
+				 CONNECT BY PRIOR cate_seq = p_cate_seq
+				)
+				path,
+				(
+				     SELECT sys_connect_by_path(cate_seq, '>') path
+				       FROM t_cate
+				      WHERE cate_seq              = a.cate_seq
+				 START WITH p_cate_seq     = 0
+				 CONNECT BY PRIOR cate_seq = p_cate_seq
+				)
+				seq_path
+		  FROM t_coupon_apply_cate a, t_cate b
+		 WHERE a.cate_seq = b.cate_seq
+		   AND a.coupon_seq = #value#
+	</select>
+
+	<select id="getApplyProductList" parameterClass="Integer" resultClass="Param">
+		SELECT a.coupon_seq, a.apply_seq, a.dpid, a.sale_yn, b.title_l, b.title_s
+		  FROM t_coupon_apply_product a, t_product_display b
+		 WHERE a.dpid = b.dpid
+		   AND a.coupon_seq = #value#
+		 ORDER BY a.apply_seq, a.sale_yn DESC
+	</select>
+	
+	<select id="getGiftList" parameterClass="Param" resultClass="Param">
+		SELECT a.coupon_seq, a.dpid, a.qty, b.coupon_name, c.seq 
+		  FROM t_coupon_gift a, t_coupon b, t_mem_downloaded_coupon c
+		 WHERE a.coupon_seq = b.coupon_seq
+		   AND a.coupon_seq = c.coupon_seq
+		   AND b.coupon_seq = c.coupon_seq
+		   AND c.mem_id = #mem_id#
+		   AND c.seq IN (	
+	    	<iterate property="mem_seq" conjunction=",">
+	    		#mem_seq[]#
+	    	</iterate>
+			)		   
+	</select>
+</sqlMap>

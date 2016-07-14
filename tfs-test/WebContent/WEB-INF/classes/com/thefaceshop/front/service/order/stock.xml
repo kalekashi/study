@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="Stock">
+	<update id="decrease" parameterClass="Param">
+		UPDATE t_wms_stock
+		   SET active_stock = active_stock - #qty#,
+		       update_date = sysdate
+		 WHERE pserial = #pserial#
+	</update>
+	
+	<select id="getStockByDpid" resultClass="Integer" parameterClass="String">
+		SELECT f_active_stock(#value#) active_stock 
+		  FROM dual		    
+   	</select>
+</sqlMap>

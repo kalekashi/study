@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="GroupCounsel">
+	<insert id="insert" parameterClass="Param">
+		 INSERT
+		   INTO t_GROUPORDER_COUNSEL( 
+		        seq,
+		        site_code,
+		        name,
+		        email,
+		        type,
+		        title,
+		        question,
+		        status,
+		        hit,
+		        mem_id,
+		        regist_date,
+		        cs_yn,
+		        complete_yn,
+		        apply_emailYn
+		    )
+		    VALUES
+		    (
+		        seq_GROUPORDER_COUNSEL.NEXTVAL,
+		        #site_code#,
+		        #name#,
+		        #email#,
+		        #type#,
+		        #title#,
+		        #question#,
+		        NVL(#status#, 'S'),
+		        0,
+		        #mem_id#,
+		        SYSDATE,
+		        'N',
+		        'N',
+		        #apply_emailYn#
+		    )
+	</insert>
+
+	<resultMap id="GroupCounselInfo" class="Param">
+		<result property="seq" column="seq"></result>
+		<result property="site_code" column="site_code"></result>
+		<result property="cate_seq" column="cate_seq"></result>
+		<result property="dpid" column="dpid"></result>
+		<result property="corp_name" column="corp_name"></result>
+		<result property="name" column="name"></result>
+		<result property="tel1" column="tel1"></result>
+		<result property="tel2" column="tel2"></result>
+		<result property="tel3" column="tel3"></result>
+		<result property="mobile1" column="mobile1"></result>
+		<result property="mobile2" column="mobile2"></result>
+		<result property="mobile3" column="mobile3"></result>
+		<result property="fax1" column="fax1"></result>
+		<result property="fax2" column="fax2"></result>
+		<result property="fax3" column="fax3"></result>
+		<result property="email" column="email"></result>
+		<result property="title" column="title"></result>
+		<result property="question" column="question" jdbcType="CLOB" javaType="java.lang.String"></result>
+		<result property="answer" column="answer" jdbcType="CLOB" javaType="java.lang.String"></result>
+		<result property="note" column="note"></result>
+		<result property="hit" column="hit"></result>
+		<result property="mem_id" column="mem_id"></result>
+		<result property="regist_date" column="regist_date"></result>
+		<result property="counsel_date" column="counsel_date"></result> 
+		<result property="cs_yn" column="cs_yn"></result>
+		<result property="complete_yn" column="complete_yn"></result> 
+		<result property="apply_emailYn" column="apply_emailYn"></result>
+	</resultMap>
+	
+	<select id="getInfo" resultMap="GroupCounselInfo" parameterClass="Param">
+		 SELECT a.seq, a.site_code, a.cate_seq, a.dpid, a.corp_name,	
+				a.name, a.tel1, a.tel2, a.tel3, a.mobile1,		
+				a.mobile2, a.mobile3, a.fax1, a.fax2,		
+				a.fax3, a.email, a.title, a.question, a.answer,  a.note, 
+				a.hit,		
+				a.mem_id,	
+				TO_CHAR(a.regist_date, 'yyyy-mm-dd') regist_date,	
+				TO_CHAR(a.counsel_date, 'yyyy-mm-dd') counsel_date,
+				a.cs_yn,		
+				a.complete_yn, a.apply_emailYn
+		   FROM t_GROUPORDER_COUNSEL a
+		  WHERE a.seq = #seq#
+		    AND a.status = 'S'
+		    AND a.site_code = #site_code#
+	</select>
+	
+</sqlMap>

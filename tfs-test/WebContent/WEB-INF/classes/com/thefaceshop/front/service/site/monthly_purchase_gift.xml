@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="MPGift">
+	
+	<select id="getFirstInfo" parameterClass="Param" resultClass="Param">
+		<![CDATA[
+		SELECT *
+		  FROM (
+		  		SELECT ROW_NUMBER() OVER(ORDER BY SEQ DESC) RNUM,
+		  				DECODE(A.STATUS, 'S', '활성', 'H', '비활성', 'D', '삭제') STATUS_NAME,
+		  			   SEQ, A.SITE_CODE, TO_CHAR(a.start_date, 'yyyy.mm.dd') start_date,
+					    TO_CHAR(a.end_date, 'yyyy.mm.dd') end_date, TITLE, A.STATUS, 
+						TO_CHAR(a.regist_date, 'yyyy.mm.dd') regist_date, SOLDOUT,
+		  			   A.IMAGE_NAME, IMAGE_NAME_MOBILE, A.BRAND_YN, MALL_YN, STAFF_YN
+		  		  FROM T_MONTHLY_PURCHASE_GIFT A
+		  		 WHERE A.STATUS = 'S'
+		]]>
+		<isNotEmpty property="site_code">
+				   AND A.SITE_CODE = #site_code#
+		</isNotEmpty>
+		<isNotEmpty property="brand_yn">
+					AND a.brand_yn = #brand_yn#
+		</isNotEmpty>
+		<isNotEmpty property="mall_yn">
+					AND a.mall_yn = #mall_yn#
+		</isNotEmpty>
+		<isNotEmpty property="staff_yn">
+					AND a.staff_yn = #staff_yn#
+		</isNotEmpty>
+		<![CDATA[
+				and sysdate BETWEEN START_DATE AND end_date  
+		       )
+		 WHERE ROWNUM = 1 
+		]]>
+	</select>
+
+
+	
+
+</sqlMap>

@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="Tester"> 
+	<resultMap id="TesterInfo" class="Param">
+		<result property="master_seq" column="master_seq"></result>
+		<result property="title" column="title"></result>
+		<result property="apply_start_date" column="apply_start_date"></result>
+		<result property="apply_end_date" column="apply_end_date"></result>
+		<result property="review_start_date" column="review_start_date"></result>
+		<result property="review_end_date" column="review_end_date"></result>
+		<result property="image_name" column="image_name"></result>
+		<result property="image_mobile" column="image_mobile"></result>
+		<result property="excel_name" column="excel_name"></result>
+		<result property="contents" column="contents" jdbcType="CLOB" javaType="java.lang.String"></result>
+		<result property="contents_mobile" column="contents_mobile" jdbcType="CLOB" javaType="java.lang.String"></result>
+		<result property="url" column="url"></result>
+		<result property="status" column="status"></result>
+		<result property="regist_user" column="regist_user"></result>
+		<result property="regist_date" column="regist_date"></result>
+		<result property="tester_type" column="tester_type"></result>
+		<result property="tester_type_name" column="tester_type_name"></result>
+		<result property="sns_image" column="sns_image"></result>
+		<result property="site_code" column="site_code"></result>
+		<result property="experience_select_date" column="experience_select_date"></result>
+		<result property="after_thumbnail" column="after_thumbnail"></result>
+		<result property="after_thumbnail_comment" column="after_thumbnail_comment"></result>
+		<result property="after_banner" column="after_banner"></result>
+		<result property="after_banner_comment" column="after_banner_comment"></result>
+		<result property="facebook_comment" column="facebook_comment"></result>
+		<result property="twitter_comment" column="twitter_comment"></result>
+		<result property="blog_img" column="blog_img"></result>
+		<result property="best_review_date" column="best_review_date"></result>
+		<result property="tester_cnt" column="tester_cnt"></result>
+	</resultMap>
+	
+	<select id="getList" resultMap="TesterInfo" parameterClass="Param">
+		<![CDATA[
+	     SELECT *
+		   FROM (
+		   		SELECT /*+index_desc(a pk_tester_master) */ rownum rnum,
+			 		a.master_seq, a.title,  
+	              	TO_CHAR(a.apply_start_date, 'yyyy.mm.dd') apply_start_date,
+	              	TO_CHAR(a.apply_end_date, 'yyyy.mm.dd') apply_end_date,
+	              	TO_CHAR(a.review_start_date, 'yyyy.mm.dd') review_start_date,
+	              	TO_CHAR(a.review_end_date, 'yyyy.mm.dd') review_end_date,
+	              	TO_CHAR(a.experience_select_date, 'yyyy.mm.dd') experience_select_date,
+	              	a.image_name, a.image_mobile, a.contents, a.contents_mobile, a.url,  a.excel_name,
+	              	a.status,
+	              	a.regist_user, TO_CHAR(a.regist_date, 'yyyy.mm.dd') regist_date,
+	                F_TESTER_MASTER_TYPE(a.master_seq) tester_type,
+	                decode(F_TESTER_MASTER_TYPE(a.master_seq), '01', '모집중', '02', '리뷰작성', '03', '이벤트완료', '04', '대기', '05', '당첨자발표') tester_type_name,
+	                a.sns_image, a.site_code,
+	                a.after_thumbnail, a.after_thumbnail_comment, a.after_banner,
+	                a.after_banner_comment, a.facebook_comment,
+	                a.twitter_comment, a.blog_img,
+	                a.best_review_date, a.tester_cnt
+				FROM T_TESTER_MASTER a
+				WHERE  a.status = 'S'
+				   and a.master_seq > 0
+		]]>
+					AND a.site_code = #site_code#
+				    AND TRUNC(sysdate) >= TRUNC(apply_start_date)
+		<isNotEmpty property="tester_type">
+					AND F_TESTER_MASTER_TYPE(a.master_seq) = #tester_type#
+		</isNotEmpty>
+		<isNotEmpty property="keyword">
+		   			AND a.title like '%' || #keyword# || '%'
+   		</isNotEmpty>
+   		<isNotEmpty property="review_ing">
+		   			AND SYSDATE BETWEEN review_start_date and review_end_date
+   		</isNotEmpty>
+		<![CDATA[
+			        AND rownum <= #POS_END#
+		    )
+		  WHERE rnum > #POS_STA#
+		]]>
+  	</select>
+
+	<select id="getListCount" parameterClass="Param" resultClass="Integer">
+		 <![CDATA[
+		 SELECT count(*)
+		 FROM T_TESTER_MASTER a
+		 WHERE a.status = 'S'
+		]]>
+			AND a.site_code = #site_code#	
+			AND TRUNC(sysdate) >= TRUNC(apply_start_date)	
+		<isNotEmpty property="tester_type">
+			AND F_TESTER_MASTER_TYPE(a.master_seq) = #tester_type#
+		</isNotEmpty>
+		<isNotEmpty property="keyword">
+		   	AND a.title like '%' || #keyword# || '%'
+   		</isNotEmpty>
+   		<isNotEmpty property="review_ing">
+		   	AND SYSDATE BETWEEN review_start_date and review_end_date
+   		</isNotEmpty>
+	</select>
+	
+	<select id="getInfo" resultMap="TesterInfo" parameterClass="Param">
+		 SELECT /*+index_desc(a pk_tester_master) */
+		 		a.master_seq, a.title,  
+              	TO_CHAR(a.apply_start_date, 'yyyy.mm.dd') apply_start_date,
+              	TO_CHAR(a.apply_end_date, 'yyyy.mm.dd') apply_end_date,
+              	TO_CHAR(a.review_start_date, 'yyyy.mm.dd') review_start_date,
+              	TO_CHAR(a.review_end_date, 'yyyy.mm.dd') review_end_date,
+              	TO_CHAR(a.experience_select_date, 'yyyy.mm.dd') experience_select_date,
+              	a.image_name, a.image_mobile, a.contents, a.contents_mobile, a.url,  a.excel_name,
+              	a.status,
+              	a.regist_user, TO_CHAR(a.regist_date, 'yyyy.mm.dd') regist_date,
+                F_TESTER_MASTER_TYPE(a.master_seq) tester_type,
+                decode(F_TESTER_MASTER_TYPE(a.master_seq), '01', '모집중', '02', '리뷰작성', '03', '이벤트완료', '04', '대기', '05', '당첨자발표') tester_type_name,
+                a.sns_image, a.site_code,
+                a.after_thumbnail, a.after_thumbnail_comment, a.after_banner,
+                a.after_banner_comment, a.facebook_comment,
+                a.twitter_comment, a.blog_img,
+                a.best_review_date, a.tester_cnt
+		   FROM T_TESTER_MASTER a
+		  WHERE a.status = 'S'
+		    and a.master_seq > 0
+		    AND a.master_seq  = #master_seq#
+		    AND rownum        = 1
+	</select>
+	
+	
+</sqlMap>

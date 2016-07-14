@@ -1,0 +1,344 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="BeautyTipBoard"> 
+	<resultMap id="Info" class="Param"> 
+		<result property="seq" column="seq"></result>
+		<result property="master_seq" column="master_seq"></result>
+		<result property="cate" column="cate"></result>
+		<result property="title" column="title"></result>
+		<result property="contents" column="contents" jdbcType="CLOB" javaType="java.lang.String"></result>
+		<result property="thumbnail" column="thumbnail"></result>
+		<result property="image_name" column="image_name"></result>
+		<result property="url" column="url"></result>
+		<result property="beauty_yn" column="beauty_yn"></result>
+		<result property="beauty_vod_yn" column="beauty_vod_yn"></result> 
+		<result property="best_yn" column="best_yn"></result>
+		<result property="recommend" column="recommend"></result>
+		<result property="wish" column="wish"></result>
+		<result property="hit" column="hit"></result>
+		<result property="status" column="status"></result>
+		<result property="mem_id" column="mem_id"></result>
+		<result property="regist_date" column="regist_date"></result>
+		<result property="type" column="type"></result>
+	</resultMap>
+
+	<select id="getBeautyVodInfo" resultClass="Param" >
+	    SELECT /*+INDEX_DESC(A PK_T_BEAUTY_TIP_BOARD) */ ROWNUM RNUM, master_seq,
+	        seq, title,  cate, thumbnail, beauty_yn, beauty_vod_yn, best_yn,
+	        recommend, wish, hit, image_name, url, type,
+	        status, mem_id, TO_CHAR(regist_date, 'YYYY.MM.DD') AS regist_date
+	    FROM T_BEAUTY_TIP_BOARD A 
+	    WHERE A.seq > 0
+	     AND status = 'S'
+	     AND beauty_vod_yn = 'Y'
+	     AND ROWNUM = 1
+	</select>
+	
+	<sql id="BeautyTipBoard.getListParam">
+		<isNotEmpty property="mem_id">
+				AND mem_id = #mem_id#
+		</isNotEmpty>	
+		<isNotEmpty property="type">
+				AND type = #type#
+		</isNotEmpty>	
+		<isNotEmpty property="cate">
+				AND cate = #cate#
+		</isNotEmpty>
+		<isNotEmpty property="master_seq">
+				AND master_seq = #master_seq#
+		</isNotEmpty>		
+		<isNotEmpty property="beauty_yn">
+				AND beauty_yn = #beauty_yn#
+		</isNotEmpty>
+		<isNotEmpty property="beauty_vod_yn">
+				AND beauty_vod_yn = #beauty_vod_yn#
+		</isNotEmpty>		
+		<isNotEmpty property="best_yn">
+				AND best_yn = #best_yn#
+		</isNotEmpty>				
+		<isNotEmpty property="keyword">
+		    <isEqual property="keytype" compareValue="01">
+		        	AND a.title like '%' || #keyword# || '%'
+		    </isEqual>
+		    <isEqual property="keytype" compareValue="02">
+		        	AND a.contents like '%' || #keyword# || '%'
+		    </isEqual>
+		    <isEqual property="keytype" compareValue="03">
+		        	AND (
+		        		a.title like '%' || #keyword# || '%' 
+		        		Or a.contents like '%' || #keyword# || '%'
+			           OR EXISTS 
+			           (SELECT '1' 
+			             FROM t_product_cache pc
+			                , t_product_display display
+			                , T_BEAUTY_TIP_BOARD_PRODUCT bpc 
+			            WHERE a.seq = bpc.SEQ 
+			                  AND pc.dpid = display.dpid 
+			                  AND pc.dpid = bpc.dpid                   
+			                  AND display.list_yn = 'Y' 
+			                  AND display.start_date <![CDATA[<]]>= SYSDATE 
+			                  AND display.end_date >= SYSDATE 
+			                  AND display.status = 'S' 
+			                  AND display.device_type = 'A' 
+			                  AND display.show_grade_type = 'A' 
+			                  AND  
+			                  ( 
+			                      display.title_s LIKE '%' || #keyword# || '%' 
+			                      OR display.title_l LIKE '%' || #keyword# || '%' 
+			                      OR display.summary LIKE '%' || #keyword# || '%' 
+			                      OR display.tag LIKE '%' || #keyword# || '%'  
+			                  )
+			                  <include refid="Common.productCache"/>  
+			           ) 		        		
+		        	)
+		    </isEqual>
+   		</isNotEmpty>
+		<isNotEmpty property="dpid">
+				AND EXISTS (SELECT '1' 
+		             FROM T_BEAUTY_TIP_BOARD_PRODUCT btp 
+		            WHERE a.seq = btp.SEQ
+		              and btp.dpid = #dpid# 
+		           )
+		</isNotEmpty>   			
+	</sql>
+		
+	<select id="getList" parameterClass="Param" resultMap="Info">
+		<![CDATA[
+			SELECT *
+			FROM (
+				SELECT
+		]]>
+					<isNotEmpty property="sort">
+						<isEqual property="sort" compareValue="recommend">
+							        /*+ index_desc(a idx_beauty_type_board_recom) */
+						</isEqual>
+					</isNotEmpty>		
+					<isEmpty property="sort">
+		        					/*+INDEX_DESC(A PK_T_BEAUTY_TIP_BOARD) */
+					</isEmpty>
+		<![CDATA[										 
+					ROWNUM RNUM, master_seq,
+					seq, title, contents, cate, thumbnail, beauty_yn, beauty_vod_yn, best_yn,
+					recommend, wish, hit, image_name, url,type, 
+					status, 
+					mem_id, TO_CHAR(regist_date, 'YYYY.MM.DD') AS regist_date  
+				FROM T_BEAUTY_TIP_BOARD A
+			    WHERE A.seq > 0
+			     and a.recommend >= 0
+			     AND status = 'S'
+		]]>
+		<include refid="BeautyTipBoard.getListParam"/>
+		<![CDATA[
+				AND ROWNUM <= #POS_END#
+			)	
+			WHERE RNUM > #POS_STA#
+		]]>			
+	</select>
+	
+	<select id="getListCount" parameterClass="Param" resultClass="java.lang.Integer">
+		<![CDATA[
+			SELECT COUNT(seq)
+			FROM T_BEAUTY_TIP_BOARD a
+				WHERE status = 'S'
+		]]>
+		<include refid="BeautyTipBoard.getListParam"/>
+	</select>
+	
+	<select id="getInfo" parameterClass="Param" resultMap="Info" >
+		SELECT master_seq, seq, title, contents, cate, thumbnail, beauty_yn, beauty_vod_yn,  best_yn,
+			recommend, wish, hit,image_name, url, type, 
+			status, decode(a.status, 'S', '활성', 'H', '비활성', 'D', '삭제') status_name,
+			mem_id, TO_CHAR(regist_date, 'YYYY.MM.DD') AS regist_date
+		FROM T_BEAUTY_TIP_BOARD a
+		WHERE seq = #seq#
+		  and status = 'S'
+	</select>
+	
+	<select id="getNextSeq" resultClass="Integer">
+  		SELECT SEQ_BEAUTY_TIP_BOARD.NEXTVAL FROM dual
+  	</select>
+  	
+	<insert id="insert" parameterClass="Param">
+		INSERT INTO T_BEAUTY_TIP_BOARD(
+			seq, master_seq, title, contents, cate, type, thumbnail,  beauty_yn, beauty_vod_yn, best_yn, image_name, url,
+			status, mem_id, regist_date)
+		VALUES
+			(#seq#, #master_seq#, #title#,  #contents#, #cate#, #type#, #thumbnail#, nvl(#beauty_yn#, 'N'), nvl(#beauty_vod_yn#, 'N'), nvl(#best_yn#, 'N'),
+			#image_name#, #url#, 'S', #mem_id#, SYSDATE)
+	</insert>
+	
+	<update id="update" parameterClass="Param">
+		UPDATE T_BEAUTY_TIP_BOARD
+		SET title = #title#,
+			contents = #contents#,
+			cate = #cate#,
+			thumbnail = #thumbnail#,
+			master_seq = #master_seq#
+		WHERE seq = #seq#
+	     and mem_id  = #mem_id#
+	</update>
+	
+	<update id="delete" parameterClass="Param">
+		UPDATE T_BEAUTY_TIP_BOARD
+		SET status = 'D'
+		WHERE seq = #seq#
+	</update>
+	
+	<update id="increaseHit" parameterClass="Param">
+		UPDATE T_BEAUTY_TIP_BOARD
+		SET    hit    = hit + 1
+		WHERE  seq    = #seq#
+	</update>	
+	
+	<update id="increaseRecommend" parameterClass="Param">
+		UPDATE T_BEAUTY_TIP_BOARD
+		SET    recommend    = recommend + 1
+		WHERE  seq    = #seq#
+	</update>	
+
+	<update id="increaseWish" parameterClass="Param">
+		UPDATE T_BEAUTY_TIP_BOARD
+		SET    wish    = wish + 1
+		WHERE  seq    = #seq#
+	</update>		
+		
+	<insert id="insertRecommend" parameterClass="Param">
+		INSERT INTO T_BEAUTY_TIP_BOARD_RECOMMEN(
+			lseq, seq, type, mem_id, regist_date)
+		VALUES(
+			(SELECT NVL(MAX(lseq), 0) + 1 FROM T_BEAUTY_TIP_BOARD_RECOMMEN), #seq#, #type#,  #mem_id#, SYSDATE)
+	</insert>
+	
+	<select id="isLikeExists" parameterClass="Param" resultClass="Integer">
+		SELECT COUNT(*)
+		  FROM T_BEAUTY_TIP_BOARD_RECOMMEN
+		 WHERE lseq > 0
+		   and seq = #seq#
+		   and mem_id = #mem_id#
+		   AND type = #type#
+		<isNotEmpty property="cdate">
+		   AND trunc(regist_date) = trunc(sysdate)
+		</isNotEmpty>		   
+	</select>	
+	
+	<insert id="insertProduct" parameterClass="Param">
+		INSERT INTO T_BEAUTY_TIP_BOARD_PRODUCT(
+			pseq, seq, dpid, rel_dpid, regist_date)
+		VALUES( 
+			(SELECT NVL(MAX(pseq), 0) + 1 FROM T_BEAUTY_TIP_BOARD_PRODUCT where seq = #seq#), #seq#, #dpid#, #rel_dpid#, SYSDATE) 
+	</insert>
+	
+	<select id="getProductList" parameterClass="Param" resultClass="Param">
+		select * from
+		( 		     	
+	        SELECT 
+	            row_number() over (order by bpc.pseq) rnum, bpc.pseq, bpc.seq, bpc.rel_dpid,
+	            pc.dpid, pc.grade_code, pc.device_type, pc.price,   
+	            pc.promotion_gift,	pc.promotion_discount, pc.promotion_online, pc.image_original, pc.image_large,
+	            pc.image_medium, pc.image_small, pc.image_thumb, pc.review_cnt, pc.review_score_avg,
+	            pc.feature_01, pc.feature_02, pc.feature_03, pc.feature_04, pc.feature_05,  
+	            display.site_code, display.pserial, display.title_l, display.title_s, display.tag, display.default_price, display.show_grade_type,
+	            display.regist_date,  display.soldout, display.coupon_yn,
+	            f_active_stock(display.dpid) active_stock        
+	         FROM 
+	            t_product_cache pc, 
+	            t_product_display display,
+	            T_BEAUTY_TIP_BOARD_PRODUCT bpc    
+	        WHERE bpc.seq = #seq# 
+	        AND pc.dpid = display.dpid
+	        AND pc.dpid = bpc.dpid
+	        AND display.list_yn = 'Y'
+	        AND display.start_date <![CDATA[<]]>= SYSDATE
+	        AND display.end_date >= SYSDATE	
+	        AND display.status ='S'
+	        AND display.device_type = 'A' 
+	        AND display.show_grade_type	='A'
+			<include refid="Common.productCache"/>
+		)		
+ 	    <![CDATA[   
+		  WHERE rnum <= #POS_END#
+		    AND rnum > #POS_STA#	
+		]]>			        
+	</select>
+	
+	<insert id="deleteProduct" parameterClass="Param">
+		delete from  T_BEAUTY_TIP_BOARD_PRODUCT where seq =  #seq#
+	</insert>
+	
+	<select id="getWishList" parameterClass="Param" resultClass="Param">
+		<![CDATA[
+				SELECT *
+				FROM (
+					SELECT /*+ index_desc(a PK_T_BEAUTY_TIP_BOARD_RECOMMEN)  use_nl(a b) */ 
+	              ROWNUM RNUM
+	            , b.seq 
+	            , a.lseq  
+	            , b.title 
+				, b.mem_id, TO_CHAR(b.regist_date, 'YYYY.MM.DD') AS regist_date
+	         FROM T_BEAUTY_TIP_BOARD_RECOMMEN a 
+	            , T_BEAUTY_TIP_BOARD b 
+	        WHERE a.seq = b.seq 
+	              AND b.status = 'S' 
+	              AND a.mem_id = #mem_id# 
+	              AND A.TYPE = 'W' 
+	              AND a.lseq > 0 
+		]]>
+		<isNotEmpty property="keyword">
+		    <isEqual property="keytype" compareValue="01">
+		        	AND b.title like '%' || #keyword# || '%'
+		    </isEqual>
+		    <isEqual property="keytype" compareValue="02">
+		        	AND b.contents like '%' || #keyword# || '%'
+		    </isEqual>
+		    <isEqual property="keytype" compareValue="03">
+		        	AND (
+		        		b.title like '%' || #keyword# || '%' 
+		        		Or b.contents like '%' || #keyword# || '%'
+		        		)
+		    </isEqual>
+   		</isNotEmpty>		        				
+		<![CDATA[
+				AND ROWNUM <= #POS_END#
+			)	
+			WHERE RNUM > #POS_STA#
+		]]>			
+	</select>
+	
+	<select id="getWishListCount" parameterClass="Param" resultClass="java.lang.Integer">
+				SELECT count(*) 
+	         FROM T_BEAUTY_TIP_BOARD_RECOMMEN a 
+	            , T_BEAUTY_TIP_BOARD b 
+	        WHERE a.seq = b.seq 
+	              AND b.status = 'S' 
+	              AND a.mem_id = #mem_id#  
+	              AND A.TYPE = 'W' 
+	              AND a.lseq > 0 
+		<isNotEmpty property="keyword">
+		    <isEqual property="keytype" compareValue="01">
+		        	AND b.title like '%' || #keyword# || '%'
+		    </isEqual>
+		    <isEqual property="keytype" compareValue="02">
+		        	AND b.contents like '%' || #keyword# || '%'
+		    </isEqual>
+		    <isEqual property="keytype" compareValue="03">
+		        	AND (
+		        		b.title like '%' || #keyword# || '%' 
+		        		Or b.contents like '%' || #keyword# || '%'
+		        		)
+		    </isEqual>
+   		</isNotEmpty>		              
+	</select>	
+	<update id="minusWish" parameterClass="Param">
+		UPDATE T_BEAUTY_TIP_BOARD
+		SET    recommend    = wish - 1
+		WHERE  seq    = #seq#
+	</update>
+	
+	<delete id="deleteWish" parameterClass="Param">
+		DELETE T_BEAUTY_TIP_BOARD_RECOMMEN 
+		 WHERE seq = #seq# 
+		       AND mem_id = #mem_id#
+		       and type = 'W'
+	</delete>					
+</sqlMap>

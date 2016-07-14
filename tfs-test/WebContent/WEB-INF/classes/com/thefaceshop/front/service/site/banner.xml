@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="Banner">
+	<cacheModel type="LRU" id="productLineBanner">
+		<flushInterval seconds="1"/>
+	</cacheModel>
+
+	<cacheModel type="LRU" id="bannerList">
+		<flushInterval seconds="1"/>
+	</cacheModel>			
+
+	<select id="getProductLineBannerInfo" resultClass="Param" parameterClass="Param" cacheModel="productLineBanner">
+		SELECT cate_seq, position, subject, banner, link, banner_mobile, link_mobile 
+        FROM T_CATE_BANNER
+        WHERE cate_Seq= #cate_seq#
+	</select>
+	
+	<select id="getBannerList" resultClass="Param" parameterClass="Param" cacheModel="bannerList">
+        SELECT  row_number() over (order by banner.rank asc, banner.seq desc) rnum,
+        		banner.seq, banner.position, banner.subject, banner.banner, BANNER.LINK,
+        		banner.target, BANNER.RANK, banner.sdate, banner.edate, banner.status, banner.banner_bg,
+            	banner.brand_yn, banner.mall_yn, banner.staff_yn
+        FROM T_BANNER banner
+        WHERE status ='S'
+		<![CDATA[
+		   AND banner.SDATE <= TO_CHAR(SYSDATE, 'YYYY.MM.DD HH24:MI')
+		   AND banner.EDATE >= TO_CHAR(SYSDATE, 'YYYY.MM.DD HH24:MI')
+		]]>        
+        <isNotEmpty property="seq">
+		    AND banner.seq = #seq#
+		</isNotEmpty>
+        <isNotEmpty property="position">
+		    AND banner.position = #position#
+		</isNotEmpty>		
+		<isNotEmpty property="brand_yn">
+			AND banner.brand_yn = #brand_yn#
+		</isNotEmpty>
+		<isNotEmpty property="mall_yn">
+			AND banner.mall_yn = #mall_yn#
+		</isNotEmpty>
+		<isNotEmpty property="staff_yn">
+			AND banner.staff_yn = #staff_yn#
+		</isNotEmpty>
+		<isNotEmpty property="site_code">
+			AND banner.SITE_CODE = #site_code#
+		</isNotEmpty>
+	</select>
+	
+	
+</sqlMap>

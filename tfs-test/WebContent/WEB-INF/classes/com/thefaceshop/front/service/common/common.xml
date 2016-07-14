@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="Common">
+	<sql id="productCache">
+	<![CDATA[
+		    AND pc.execute_seq =
+		    (
+		         SELECT execute_seq
+		           FROM
+		            (
+		                 SELECT row_number() over (order by apply_date DESC, execute_seq DESC) rnum, execute_seq
+		                   FROM t_product_cache_execute
+		                  WHERE apply_date <= sysdate
+		                    AND regist_date > sysdate - 3
+		                    AND status      = 'S'
+		            )
+		          WHERE rnum = 1
+		    )
+		    AND pc.grade_code = #grade_code#
+		    AND pc.device_type = #device_type#
+	]]>
+	</sql>
+</sqlMap>

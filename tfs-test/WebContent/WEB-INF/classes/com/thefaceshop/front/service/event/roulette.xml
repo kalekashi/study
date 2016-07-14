@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="Roulette">
+	<select id="getLogInfo" parameterClass="java.lang.String" resultClass="Param">
+		SELECT *
+		  FROM T_ROULETTE_LOG
+		 WHERE YMD = TO_CHAR(SYSDATE, 'YYYYMMDD')
+		   AND MEM_ID = #mem_id#
+	</select>
+	
+	<insert id="insertLog" parameterClass="java.lang.String">
+		INSERT INTO T_ROULETTE_LOG
+			(
+				YMD,
+				SEQ,
+				MEM_ID,
+				GIFT,
+				REGIST_DATE
+			)
+		VALUES
+			(
+				TO_CHAR(SYSDATE, 'YYYYMMDD'),
+				(SELECT NVL(MAX(SEQ), 0) + 1 FROM T_ROULETTE_LOG WHERE YMD = TO_CHAR(SYSDATE, 'YYYYMMDD')),
+				#mem_id#,
+				0,
+				SYSDATE
+			)
+	</insert>
+
+	<update id="update" parameterClass="Param">
+		UPDATE T_ROULETTE_LOG
+		   SET GIFT = #gift#
+		 WHERE YMD = TO_CHAR(SYSDATE, 'YYYYMMDD')
+		   AND MEM_ID = #mem_id#
+	</update>
+	
+	<select id="getInfo" resultClass="Param">
+		<![CDATA[
+		SELECT /*+ INDEX_DESC(A PK_ROULETTE) */
+			   A.*,
+			   (SELECT COUNT(*) FROM T_ROULETTE_LOG WHERE YMD = TO_CHAR(SYSDATE, 'YYYYMMDD') AND GIFT = 1) GIFT1_TOT,
+			   (SELECT COUNT(*) FROM T_ROULETTE_LOG WHERE YMD = TO_CHAR(SYSDATE, 'YYYYMMDD') AND GIFT = 2) GIFT2_TOT,
+			   (SELECT COUNT(*) FROM T_ROULETTE_LOG WHERE YMD = TO_CHAR(SYSDATE, 'YYYYMMDD') AND GIFT = 3) GIFT3_TOT,
+			   (SELECT COUNT(*) FROM T_ROULETTE_LOG WHERE YMD = TO_CHAR(SYSDATE, 'YYYYMMDD') AND GIFT = 4) GIFT4_TOT,
+			   (SELECT COUNT(*) FROM T_ROULETTE_LOG WHERE YMD = TO_CHAR(SYSDATE, 'YYYYMMDD') AND GIFT = 5) GIFT5_TOT,
+			   (SELECT COUNT(*) FROM T_ROULETTE_LOG WHERE YMD = TO_CHAR(SYSDATE, 'YYYYMMDD') AND GIFT = 6) GIFT6_TOT
+		  FROM T_ROULETTE A
+		 WHERE REGIST_DATE <= SYSDATE
+		   AND ROWNUM = 1
+  		]]>
+  	</select>
+
+</sqlMap>

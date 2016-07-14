@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="TesterReviewComment"> 
+
+	<select id="getList" resultClass="Param" parameterClass="Param">
+		<![CDATA[
+		SELECT 
+		       /*+index_desc(a pk_tester_review_comment) use_nl(a b) ordered */ 
+		       a.master_seq, 
+		       a.review_seq, 
+		       a.comment_seq, 
+		       a.contents, 
+		       a.status, 
+		       decode(a.status, 'S', '활성', 'H', '비활성', 'D', '삭제') status_name,
+		       a.mem_id, 
+		       TO_CHAR(a.regist_date, 'yyyy.mm.dd') regist_date 
+		  FROM T_TESTER_REVIEW_COMMENT a 
+		 WHERE a.master_seq = #master_seq# 
+		   AND a.review_seq = #review_seq# 
+		   AND a.status = 'S'
+		]]>
+  	</select>
+  	
+	<select id="getListCount" parameterClass="Param" resultClass="Integer">
+		<![CDATA[
+		SELECT count(*)
+		  FROM T_TESTER_REVIEW_COMMENT a 
+		 WHERE a.master_seq = #master_seq# 
+		   AND a.review_seq = #review_seq# 
+		   AND a.status = 'S'
+		]]>
+  	</select>
+  	  	
+
+	<select id="getInfo" resultClass="Param" parameterClass="Param"> 
+		 SELECT  
+		 	a.master_seq, a.review_seq, a.comment_seq, a.contents, a.status,  
+       		a.mem_id, TO_CHAR(a.regist_date, 'yyyy.mm.dd') regist_date
+		   FROM T_TESTER_REVIEW_COMMENT a
+		  WHERE a.comment_seq     = #comment_seq#
+		    AND a.mem_id = #mem_id# 
+		    AND a.status = 'S' 
+	</select>
+
+	<insert id="insert" parameterClass="Param">
+		<selectKey keyProperty="commentSeq" resultClass="java.lang.Integer">
+			select seq_tester_review_comment.NEXTVAL FROM DUAL 
+		</selectKey> 
+		 INSERT
+		   INTO T_TESTER_REVIEW_COMMENT
+		    (
+		        review_seq,
+		        master_seq,
+		        comment_seq,
+		        contents,
+		        status,
+		        mem_id,
+		        regist_date
+		    )
+		    VALUES
+		    (
+		        #review_seq#,
+		        #master_seq#,
+		        #commentSeq#,
+		        #contents#,
+		        'S',
+		        #mem_id#,
+		        SYSDATE
+		    )
+	</insert>
+
+	<update id="update" parameterClass="Param">
+		UPDATE T_TESTER_REVIEW_COMMENT
+		   SET contents        = #contents#
+		 WHERE comment_seq = #comment_seq#
+		   AND mem_id = #mem_id# 
+	</update>
+
+	<update id="delete" parameterClass="Param">
+		UPDATE T_TESTER_REVIEW_COMMENT
+		   SET status = 'D'
+		where comment_seq     = #comment_seq#
+		    AND mem_id = #mem_id#
+	</update>
+</sqlMap>

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="SaleAlarm">
+	<insert id="insert" parameterClass="Param">
+		INSERT INTO T_SALE_ALARM
+			(
+				SEQ,
+				SITE_CODE,
+				NAME,
+				MTEL,
+				STATUS,
+				IP,
+				REGIST_DATE
+			)
+		VALUES
+			(
+				(SELECT NVL(MAX(SEQ), 0) + 1 FROM T_SALE_ALARM),
+				#site_code#,
+				#name#,
+				#mtel#,
+				'S',
+				#ip#,
+				SYSDATE
+			)
+	</insert>
+</sqlMap>

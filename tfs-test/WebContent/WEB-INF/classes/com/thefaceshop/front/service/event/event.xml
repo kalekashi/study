@@ -1,0 +1,518 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="Event">
+
+	<resultMap id="EventInfo" class="Param">
+		<result property="seq" column="seq"></result> 
+		<result property="site_code" column="site_code"></result> 
+		<result property="title" column="title"></result>
+		<result property="title_s" column="title_s"></result>
+		<result property="contents_type" column="contents_type"></result>
+		<result property="contents" column="contents" jdbcType="CLOB" javaType="java.lang.String"></result>
+		<result property="contents_mobile" column="contents_mobile" jdbcType="CLOB" javaType="java.lang.String"></result>
+		<result property="contents_url" column="contents_url"></result>
+		<result property="contents_mobile_url" column="contents_mobile_url"></result>
+		<result property="start_date" column="start_date"></result>
+		<result property="end_date" column="end_date"></result>
+		<result property="image_name" column="image_name"></result>
+		<result property="image_mobile_name" column="image_mobile_name"></result>
+		<result property="simage_name" column="simage_name"></result>
+		<result property="hit" column="hit"></result>
+		<result property="brand_yn" column="brand_yn"></result>
+		<result property="mall_yn" column="mall_yn"></result>
+		<result property="staff_yn" column="staff_yn"></result>
+		<result property="apply_code" column="apply_code"></result>
+		<result property="status" column="status"></result>
+		<result property="status_name" column="status_name"></result>
+		<result property="regist_user" column="regist_user"></result>
+		<result property="regist_date" column="regist_date"></result>
+		<result property="event_type" column="event_type"></result> 
+		<result property="event_type_name" column="event_type_name"></result>
+		<result property="url" column="url"></result>
+		<result property="type" column="type"></result>
+		<result property="type_name" column="type_name"></result>
+		<result property="main_yn" column="main_yn"></result>  
+		<result property="list_banner_yn" column="list_banner_yn"></result> 
+		<result property="icon" column="icon"></result>  
+		<result property="icon_name" column="icon_name"></result>  
+	</resultMap>
+			
+	<sql id="Event.getListParam">
+		<isNotEmpty property="event_type">
+					AND F_EVENT_TYPE(a.seq) = #event_type#
+		</isNotEmpty>
+		<isNotEmpty property="type">
+					AND (a.type = #type# Or a.type = 'C')
+		</isNotEmpty>
+		<isNotEmpty property="main_yn">
+					AND a.main_yn = #main_yn#
+		</isNotEmpty>		
+		<isNotEmpty property="brand_yn">
+					AND a.brand_yn = #brand_yn#
+		</isNotEmpty>
+		<isNotEmpty property="mall_yn">
+					AND a.mall_yn = #mall_yn#
+		</isNotEmpty>
+		<isNotEmpty property="staff_yn">
+					AND a.staff_yn = #staff_yn#
+		</isNotEmpty>
+		<isNotEmpty property="brandShop">
+					AND (
+						a.brand_yn = 'Y'
+					    <isEqual property="brandShop" compareValue="Y">
+					        	OR a.staff_yn = 'Y'
+					    </isEqual>
+					    <isEqual property="brandShop" compareValue="N">
+					        	OR a.mall_yn = 'Y'
+					    </isEqual>						
+						)
+		</isNotEmpty>												
+		<isNotEmpty property="keyword">
+		    <isEqual property="keytype" compareValue="01">
+		        	AND a.title like '%' || #keyword# || '%'
+		    </isEqual>
+		    <isEqual property="keytype" compareValue="02">
+		        	AND a.contents like '%' || #keyword# || '%'
+		    </isEqual>
+		    <isEqual property="keytype" compareValue="03">
+		        	AND (a.title like '%' || #keyword# || '%' Or a.contents like '%' || #keyword# || '%')
+		    </isEqual>		    
+   		</isNotEmpty>	
+	</sql>	
+	
+	<select id="getList" resultMap="EventInfo" parameterClass="Param">  
+		<![CDATA[
+	     SELECT *
+		   FROM (
+				 SELECT 
+		]]>
+						 
+					<isNotEmpty property="sort">
+						<isEqual property="sort" compareValue="brand">
+							        /*+index_asc(a idx_event_brand_rank) */ 
+						</isEqual>
+					</isNotEmpty>		
+					<isEmpty property="sort">
+					    <isEqual property="brandShop" compareValue="Y">
+					        	/*+index_asc(a idx_event_staff_rank) */
+					    </isEqual>
+					    <isEqual property="brandShop" compareValue="N">
+					        	/*+index_asc(a idx_event_mall_rank) */
+					    </isEqual>
+					</isEmpty> 
+		<![CDATA[									 
+				    rownum rnum,
+				    a.seq,
+				    a.site_code,
+				    a.title,
+				    a.title_s,
+				    a.contents_type,
+				    a.contents,
+				    a.contents_url,
+				    TO_CHAR(a.start_date, 'yyyy.mm.dd') start_date,
+				    TO_CHAR(a.end_date, 'yyyy.mm.dd') end_date, 
+				    a.image_name, a.simage_name,
+				    a.hit,
+				    a.status,
+				    DECODE(a.status, 'S', '활성', 'H', '비활성', 'D', '삭제') status_name,
+				    TO_CHAR(a.regist_date, 'yyyy.mm.dd') regist_date,
+				    a.type,
+				    DECODE(a.type, 'P', 'PC', 'M', '모바일', 'C', 'PC/모바일') type_name,
+				    a.regist_user,
+				    DECODE(F_EVENT_TYPE(a.seq), '01', '진행중', '02', '완료', '03', '대기') event_type_name,
+				    F_EVENT_TYPE(a.seq) event_type, a.url,
+				    a.main_yn,
+				    a.icon,
+				    (select name2 from t_code2 where code1 = '85' and code2 = icon) icon_name,
+				    a.contents_mobile,
+				    a.contents_mobile_url,
+				    a.image_mobile_name,
+				    a.brand_yn, a.mall_yn, staff_yn,
+				    a.apply_code,
+				    a.list_banner_yn
+				FROM t_event a
+				WHERE a.site_code = #site_code#
+				AND a.seq > 0 
+				AND a.status = 'S'
+				AND a.list_banner_yn = 'Y'
+		]]>
+		<include refid="Event.getListParam"/>
+		<![CDATA[
+			        AND rownum <= #POS_END#
+		    )
+		  WHERE rnum > #POS_STA#
+		]]>
+  	</select>
+
+	<select id="getListCount" parameterClass="Param" resultClass="Integer">
+		<![CDATA[
+		 SELECT count(*)
+		   FROM t_event a
+		  WHERE a.site_code = #site_code#
+		    AND a.status = 'S'
+		]]>
+		<include refid="Event.getListParam"/>
+	</select>
+  	
+	<select id="getInfo" resultMap="EventInfo" parameterClass="Param">
+		<![CDATA[
+		 SELECT a.seq,
+		        a.site_code,
+			    a.title,
+			    a.title_s,
+			    a.contents_type,
+			    a.contents,
+			    a.contents_url,
+			    TO_CHAR(a.start_date, 'yyyy.mm.dd') start_date,
+			    TO_CHAR(a.end_date, 'yyyy.mm.dd') end_date,
+			    a.image_name, a.simage_name,
+			    a.hit,
+			    a.status,
+			    DECODE(a.status, 'S', '활성', 'H', '비활성', 'D', '삭제') status_name,
+			    TO_CHAR(a.regist_date, 'yyyy.mm.dd') regist_date,
+			    a.type,
+			    DECODE(a.type, 'P', 'PC', 'M', '모바일', 'C', 'PC/모바일') type_name,
+			    a.regist_user,
+			    DECODE(F_EVENT_TYPE(a.seq), '01', '진행중', '02', '완료', '03', '대기') event_type_name,
+			    F_EVENT_TYPE(a.seq) event_type, a.url,
+			    a.main_yn,
+			    a.icon,
+			    (select name2 from t_code2 where code1 = '85' and code2 = icon) icon_name,			    
+			    a.contents_mobile,
+			    a.contents_mobile_url,
+			    a.image_mobile_name,
+			    a.brand_yn, a.mall_yn, staff_yn,
+			    a.apply_code,
+			    a.list_banner_yn		    
+		   FROM t_event a
+		  WHERE a.site_code = #site_code#
+		    AND a.status = 'S'
+			AND a.seq = #seq#
+		]]>
+		<include refid="Event.getListParam"/>
+  	</select>
+  	
+	<update id="increaseHit" parameterClass="Param">
+		UPDATE t_event
+		SET    hit    = hit + 1
+		WHERE  seq    = #seq#
+	</update>
+	
+	<select id="getPrevNext" resultClass="Param" parameterClass="Param">
+		SELECT seq
+		     , next_seq
+		     , next_title
+		     , next_icon
+		     , prev_seq
+		     , prev_title
+		     , prev_icon		   
+		FROM (
+			SELECT seq 
+				<isNotEmpty property="sort">
+					<isEqual property="sort" compareValue="brand">
+		            , LEAD ( seq, 1 ) over ( ORDER BY brand_yn desc, RANK, seq desc ) next_seq
+		            , LEAD ( title, 1, '다음글' ) over ( ORDER BY brand_yn desc, RANK, seq desc ) next_title
+		            , LEAD ( icon, 1 ) over ( ORDER BY brand_yn desc, RANK, seq desc ) next_icon
+		            , LAG ( seq, 1 ) over ( ORDER BY brand_yn desc, RANK, seq desc ) prev_seq
+		            , LAG ( title, 1, '이전글' ) over ( ORDER BY brand_yn desc, RANK, seq desc ) prev_title
+		            , LAG ( icon, 1 ) over ( ORDER BY brand_yn desc, RANK, seq desc ) prev_icon 
+					</isEqual>
+				</isNotEmpty>		
+				<isEmpty property="sort">
+				    <isEqual property="brandShop" compareValue="Y">
+		            , LEAD ( seq, 1 ) over ( ORDER BY staff_yn desc, RANK, seq desc ) next_seq
+		            , LEAD ( title, 1, '다음글' ) over ( ORDER BY staff_yn desc, RANK, seq desc ) next_title
+		            , LEAD ( icon, 1 ) over ( ORDER BY staff_yn desc, RANK, seq desc ) next_icon
+		            , LAG ( seq, 1 ) over ( ORDER BY staff_yn desc, RANK, seq desc ) prev_seq
+		            , LAG ( title, 1, '이전글' ) over ( ORDER BY staff_yn desc, RANK, seq desc ) prev_title
+		            , LAG ( icon, 1 ) over ( ORDER BY staff_yn desc, RANK, seq desc ) prev_icon
+				    </isEqual>
+				    <isEqual property="brandShop" compareValue="N">
+		            , LEAD ( seq, 1 ) over ( ORDER BY mall_yn desc, RANK, seq desc ) next_seq
+		            , LEAD ( title, 1, '다음글' ) over ( ORDER BY mall_yn desc, RANK, seq desc ) next_title
+		            , LEAD ( icon, 1 ) over ( ORDER BY mall_yn desc, RANK, seq desc ) next_icon
+		            , LAG ( seq, 1 ) over ( ORDER BY mall_yn desc, RANK, seq desc ) prev_seq
+		            , LAG ( title, 1, '이전글' ) over ( ORDER BY mall_yn desc, RANK, seq desc ) prev_title
+		            , LAG ( icon, 1 ) over ( ORDER BY mall_yn desc, RANK, seq desc ) prev_icon
+				    </isEqual>
+				</isEmpty> 			
+	  		FROM t_event a
+	  		WHERE site_code = #site_code#  
+     	       AND seq > 0
+	           AND status = 'S'
+			<include refid="Event.getListParam"/>					
+	  	)	
+  		WHERE seq = #seq#
+	</select>
+	
+	<select id="getProductGroupList" resultClass="Param" parameterClass="java.lang.String">
+		SELECT DISTINCT seq, gseq
+		     , title 
+		  FROM T_EVENT_APPLY_PRODUCT 
+		 WHERE seq = #seq#
+		 ORDER BY seq, gseq
+	</select>
+	
+	<select id="getProductList" resultClass="Param" parameterClass="Param">
+		<isNotEmpty property="PAGE_SIZE">	
+		 select * from
+			(
+		</isNotEmpty> 		       
+			<![CDATA[			
+				SELECT 
+				    row_number() over (order by event.gseq) rnum,
+				    event.seq, event.gseq, event.title,
+				    pc.dpid, pc.grade_code, pc.device_type, pc.price,   
+				    pc.promotion_gift,	pc.promotion_discount, pc.promotion_online, pc.image_original, pc.image_large,
+				    pc.image_medium, pc.image_small, pc.image_thumb, pc.review_cnt, pc.review_score_avg,
+				    pc.feature_01, pc.feature_02, pc.feature_03, pc.feature_04, pc.feature_05, pc.option_cnt,
+				    pc.feature_01_title,pc.feature_02_title,pc.feature_03_title,pc.feature_04_title,pc.feature_05_title,
+				    display.site_code, display.pserial, display.title_l, display.title_s, display.tag, display.default_price, display.show_grade_type,
+				    display.regist_date,  display.soldout, display.type, display.coupon_yn,
+				    f_active_stock(display.dpid) active_stock 
+				 FROM 
+				    t_product_cache pc, 
+				    t_product_display display,
+				    T_EVENT_APPLY_PRODUCT event          
+				WHERE pc.dpid = display.dpid
+				AND event.dpid = display.dpid 	          
+				AND event.seq = #seq#
+				AND event.SITE_CODE = #site_code#
+				AND display.status ='S'		
+				AND display.list_yn = 'Y'	  
+				AND display.start_date <= SYSDATE
+				AND display.end_date >= SYSDATE 
+				AND display.approval_yn = 'Y'
+				AND display.type       <> 'G'	
+			]]>
+			<isNotEmpty property="gseq">
+				AND event.gseq = #gseq#	
+			</isNotEmpty>
+			<include refid="Common.productCache"/>			
+			<isNotEmpty property="show_grade_type">
+				<isEqual property="show_grade_type" compareValue="Y">
+				AND display.show_grade_type	in ('A', 'E')
+				</isEqual>	
+				<isNotEqual property="show_grade_type" compareValue="Y">
+				AND display.show_grade_type	in ('A', 'S')
+				</isNotEqual>
+			</isNotEmpty>
+		<isNotEmpty property="PAGE_SIZE">
+ 	    <![CDATA[   
+		        AND rownum <= #POS_END#
+	    )
+	  WHERE rnum > #POS_STA#			    
+		]]>						
+		</isNotEmpty>
+	</select>	
+	
+	<select id="getProductListCount" parameterClass="Param" resultClass="Integer">
+			<![CDATA[			
+				SELECT count(*)
+				 FROM 
+				    t_product_cache pc, 
+				    t_product_display display,
+				    T_EVENT_APPLY_PRODUCT event          
+				WHERE pc.dpid = display.dpid
+				AND event.dpid = display.dpid 	          
+				AND event.seq = #seq#
+				AND event.SITE_CODE = #site_code#
+				AND display.status ='S'		
+				AND display.list_yn = 'Y'	  
+				AND display.start_date <= SYSDATE
+				AND display.end_date >= SYSDATE 
+				AND display.approval_yn = 'Y'
+				AND display.type       <> 'G'	
+			]]>
+			<isNotEmpty property="gseq">
+				AND event.gseq = #gseq#	
+			</isNotEmpty>
+			<include refid="Common.productCache"/>			
+			<isNotEmpty property="show_grade_type">
+				<isEqual property="show_grade_type" compareValue="Y">
+				AND display.show_grade_type	in ('A', 'E')
+				</isEqual>	
+				<isNotEqual property="show_grade_type" compareValue="Y">
+				AND display.show_grade_type	in ('A', 'S')
+				</isNotEqual>
+			</isNotEmpty>
+	</select>		
+		
+	
+	<!-- 대호이벤트 시작 -->
+	<select id="getDaehoApplyCondition" parameterClass="Param" resultClass="java.lang.Integer">
+		<![CDATA[
+		SELECT NVL(SUM(A.AMT), 0)
+		  FROM T_ORDER_MASTER A, T_ORDER_SHIP B
+		 WHERE A.ORDERID = B.ORDERID
+		   AND A.ORDER_DATE >= TO_DATE(#sdate#, 'YYYYMMDD')
+		   AND A.ORDER_DATE < TO_DATE(#edate#, 'YYYYMMDD') + 1
+		   AND A.SITE_CODE = #site_code#
+		   AND A.MEM_ID = #mem_id#
+		   AND B.STATUS IN ('10', '13', '30', '15', '17', '18', '60')
+		]]>
+	</select>
+	
+	<insert id="insertDaeho" parameterClass="Param">
+		INSERT INTO T_EVENT_DAEHO
+			(
+				MEM_ID,
+				WIN_YN,
+				REGIST_DATE
+			)
+		VALUES
+			(
+				#mem_id#,
+				'N',
+				SYSDATE
+			)
+	</insert>
+	
+	<select id="getDaehoInfo" parameterClass="Param" resultClass="Param">
+		SELECT *
+		  FROM T_EVENT_DAEHO
+		 WHERE MEM_ID = #mem_id# 
+	</select>
+	<!-- 대호이벤트 끝 --> 
+	
+	<!-- App 난수쿠폰번호 발급 시작 -->
+	<select id="getMyEvnetCouponNoInfo" parameterClass="java.lang.String" resultClass="Param">
+		SELECT *
+		  FROM t_event_coupon_20160215
+		 WHERE MEM_ID = #mem_id#
+	</select>
+	<select id="getEvnetCouponNo" parameterClass="Param" resultClass="Param">
+		SELECT coupon_num 
+		  FROM t_event_coupon_20160215
+		 WHERE coupon_num > ' '
+           AND MEM_ID IS NULL
+           AND ROWNUM = 1
+	</select>		
+	<update id="modifyEvnetCouponNo" parameterClass="Param">
+        UPDATE t_event_coupon_20160215
+        SET mem_id = #mem_id#
+        , regist_date = sysdate
+        WHERE coupon_num = #coupon_num#
+	</update>
+	
+	<!-- App 난수쿠폰번호 발급 끝 -->
+	
+	<!-- App 오프라인 쿠폰 발급 시작 -->
+	<select id="getMyOffCouponNoList" parameterClass="Param" resultClass="Param"> 
+		SELECT *
+		  FROM $table_nm$
+		 WHERE ci = #ci#
+		  and coupon_num > ' '
+	</select>	
+	<select id="getMyOffCouponNoInfo" parameterClass="Param" resultClass="Param"> 
+		SELECT *
+		  FROM $table_nm$
+		 WHERE ci = #ci#
+		 and coupon_num > ' '
+		 AND ROWNUM = 1 
+	</select>
+	<select id="getOffCouponInfoBycouponNum" parameterClass="Param" resultClass="Param"> 
+		SELECT *
+		  FROM $table_nm$
+		 WHERE coupon_num = #coupon_num#
+	</select>	
+	<select id="getOffCouponInfoByCi" parameterClass="Param" resultClass="Param"> 
+		SELECT *
+		  FROM $table_nm$
+		 WHERE ci = #ci#
+		 and coupon_num > ' '
+		 AND ROWNUM = 1 
+	</select>	
+	<select id="getOffCouponNo" parameterClass="Param" resultClass="Param">  
+		SELECT coupon_num 
+		  FROM $table_nm$
+		 WHERE coupon_num > ' '
+           AND ci IS NULL
+           AND ROWNUM = 1 
+	</select>	
+	<select id="getOffCouponNoBottom" parameterClass="Param" resultClass="Param">  
+		select           coupon_num
+		FROM   ( SELECT  coupon_num
+		       FROM     $table_nm$
+		       WHERE    coupon_num > ' '
+		       AND      ci   IS NULL
+		       ORDER BY coupon_num desc
+		       )
+		WHERE  ROWNUM = 1
+	</select>			
+	<update id="modifyOffCouponNo" parameterClass="Param"> 
+        UPDATE $table_nm$
+        SET ci = #ci#
+        , udid = #udid#
+        , n_cust_id = #n_cust_id#
+        , regist_date = sysdate
+        WHERE coupon_num = #coupon_num#
+         and ci IS NULL
+	</update>
+
+	<!-- App 오프라인 쿠폰 발급 끝 -->	
+		
+	<select id="getCommentList20160502" parameterClass="Param" resultClass="Param">
+		<![CDATA[
+		SELECT *
+		  FROM (
+				SELECT ROW_NUMBER() OVER(ORDER BY SEQ DESC) RNUM,
+					   A.*, B.MEM_NM
+				  FROM T_EVENT_COMMENT_20160502 A, T_MEM B
+				 WHERE A.MEM_ID = B.MEM_ID
+				   AND A.STATUS = 'S'
+		  	   )
+		 WHERE RNUM > #POS_STA#
+		   AND RNUM <= #POS_END#
+		]]>
+	</select>
+	
+	<!--이벤트 댓글 기능  -->	
+	
+	<select id="getCommentListCount20160502" parameterClass="Param" resultClass="java.lang.Integer">
+		SELECT COUNT(*)
+		  FROM T_EVENT_COMMENT_20160502 A, T_MEM B
+		 WHERE A.MEM_ID = B.MEM_ID
+		   AND A.STATUS = 'S'
+	</select>
+	
+	<select id="getCommentInfo20160502" parameterClass="java.lang.String" resultClass="Param">
+		SELECT *
+		  FROM T_EVENT_COMMENT_20160502
+		 WHERE SEQ = #seq#
+	</select>
+	
+	<insert id="insertComment20160502" parameterClass="Param">
+		INSERT INTO T_EVENT_COMMENT_20160502
+			(
+				SEQ,
+				MEM_ID,
+				STATUS,
+				CONTENTS,
+				REGIST_DATE
+			)
+		VALUES
+			(
+				(SELECT NVL(MAX(SEQ), 0) + 1 FROM T_EVENT_COMMENT_20160502),
+				#mem_id#,
+				'S',
+				#contents#,
+				SYSDATE
+			)
+	</insert>
+	
+	<select id="isAlreadyWrite20160502" parameterClass="String" resultClass="Integer">
+		SELECT COUNT(*)
+		  FROM t_event_comment_20160502
+		 WHERE mem_id = #value#
+		   AND status <![CDATA[<]]>> 'D'
+	</select>
+	
+	<update id="deleteComment20160502" parameterClass="Param">
+		UPDATE T_EVENT_COMMENT_20160502
+		   SET STATUS = 'D'
+		 WHERE SEQ = #seq#
+		   AND MEM_ID = #mem_id#
+	</update>
+</sqlMap>

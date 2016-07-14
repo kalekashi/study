@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="Popup">
+	<resultMap id="PopupInfo" class="Param">
+		<result property="seq" column="seq"></result>
+		<result property="site_code" column="site_code"></result>
+		<result property="title" column="title"></result>
+		<result property="contents" column="contents" jdbcType="CLOB" javaType="java.lang.String"></result>
+		<result property="width" column="width"></result>
+		<result property="height" column="height"></result>
+		<result property="top" column="top"></result>
+		<result property="left" column="left"></result>
+		<result property="start_date" column="start_date"></result>
+		<result property="end_date" column="end_date"></result>
+		<result property="status" column="status"></result>
+		<result property="gbn" column="gbn"></result>
+		<result property="brand_yn" column="brand_yn"></result>
+		<result property="mall_yn" column="mall_yn"></result>
+		<result property="staff_yn" column="staff_yn"></result>		
+		<result property="view_url" column="view_url"></result>		
+	</resultMap> 
+    
+	<select id="getInfo" resultMap="PopupInfo" parameterClass="Param">
+		 SELECT seq,
+			    site_code,
+			    title,
+			    contents,
+			    width,
+			    height,
+			    top,
+			    left,
+			    TO_CHAR(start_date, 'yyyy.mm.dd hh24:mi') start_date,
+			    TO_CHAR(end_date, 'yyyy.mm.dd hh24:mi') end_date,
+			    gbn,
+			    brand_yn, mall_yn, staff_yn,
+			    status,
+			    view_url
+		   FROM t_popup
+		  WHERE seq = #seq#
+		    and status = 'S'
+	</select>
+	
+	<select id="getList" resultMap="PopupInfo" parameterClass="Param">
+		<![CDATA[
+				 SELECT /*+index_desc(a pk_popup) use_nl(a) ordered */
+					    rownum rnum,
+						seq,
+					    site_code,
+					    title,
+					    contents,
+					    width,
+					    height,
+					    top,
+					    left,
+					    TO_CHAR(start_date, 'yyyy.mm.dd hh24:mi') start_date,
+					    TO_CHAR(end_date, 'yyyy.mm.dd hh24:mi') end_date,
+					    gbn,
+					    brand_yn, mall_yn, staff_yn,
+					    status,
+					    view_url
+				   FROM t_popup a
+				  WHERE a.status  = 'S'
+				   AND SYSDATE BETWEEN a.start_date AND a.end_date 
+		]]>
+		<isNotEmpty property="site_code">
+					AND a.site_code = #site_code#
+		</isNotEmpty>
+		<isNotEmpty property="gbn">
+					AND a.gbn = #gbn#
+		</isNotEmpty>
+		<isNotEmpty property="brand_yn">
+					AND a.brand_yn = #brand_yn#
+		</isNotEmpty>
+		<isNotEmpty property="mall_yn">
+					AND a.mall_yn = #mall_yn#
+		</isNotEmpty>
+		<isNotEmpty property="staff_yn">
+					AND a.staff_yn = #staff_yn#
+		</isNotEmpty>								
+		<isNotEmpty property="view_url">
+					AND a.seq IN (SELECT seq FROM t_popup_url WHERE url = #view_url#)
+		</isNotEmpty>
+  	</select>
+
+	
+</sqlMap>

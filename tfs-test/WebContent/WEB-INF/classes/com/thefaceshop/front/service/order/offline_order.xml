@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="OfflineOrder">
+
+	<select id="getList" parameterClass="Param" resultClass="Param">
+		<![CDATA[
+		SELECT *
+		  FROM (
+				SELECT ROW_NUMBER() OVER(ORDER BY SALE_DATE DESC) RNUM, 
+					   A.*, B.GOODS_NM
+				  FROM TCOM_CUSTORDD@TCOM A, TCOM_GOODSCODE@TCOM B
+				 WHERE A.GOODS_CD = B.GOODS_CD
+				   AND SALE_DATE BETWEEN REPLACE(REPLACE(#start_date#, '-', ''), '.', '') AND REPLACE(REPLACE(#end_date#, '-', ''), '.', '')
+				   AND N_CUST_ID = #n_cust_id#
+				   AND A.TFSP_MS_CD <> 'A01445'
+		  	   )
+		 WHERE RNUM > #POS_STA#
+		   AND RNUM <= #POS_END#
+		]]>
+	</select>
+	
+	<select id="getListCount" parameterClass="Param" resultClass="java.lang.Integer">
+		<![CDATA[
+		SELECT COUNT(*)
+		  FROM TCOM_CUSTORDD@TCOM A, TCOM_GOODSCODE@TCOM B
+		 WHERE A.GOODS_CD = B.GOODS_CD
+		   AND SALE_DATE BETWEEN REPLACE(REPLACE(#start_date#, '-', ''), '.', '') AND REPLACE(REPLACE(#end_date#, '-', ''), '.', '')
+		   AND N_CUST_ID = #n_cust_id#
+		   AND A.TFSP_MS_CD <> 'A01445'
+		]]>
+	</select>
+</sqlMap> 

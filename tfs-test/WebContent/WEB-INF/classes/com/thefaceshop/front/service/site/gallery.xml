@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="Gallery">
+	
+	<select id="getList" parameterClass="Param" resultClass="Param">
+		<![CDATA[
+		SELECT *
+		  FROM (
+		  		SELECT ROW_NUMBER() OVER(ORDER BY wdate DESC) RNUM,
+		  				DECODE(A.STATUS, 'S', '활성', 'H', '비활성', 'D', '삭제') STATUS_NAME,
+		  			   SEQ, A.SITE_CODE, YEAR, MONTH, SUBJECT, A.STATUS, A.REGIST_DATE, A.TYPE,
+		  			   A.GBN, a.thumbnail, a.cffile, a.sub, a.link,
+		  			   link_url, wdate,
+		  			   (SELECT NAME2 FROM T_CODE2 WHERE CODE1 = '63' AND CODE2 = A.type) type_name
+		  		  FROM T_MEDIA A
+		  		 WHERE A.STATUS = 'S'
+		]]>
+				   AND A.SITE_CODE = #site_code#
+				   AND a.wdate <![CDATA[<]]> TO_CHAR(SYSDATE , 'yyyy.mm.dd hh24:mi:ss')
+		<isNotEmpty property="gbn">
+				   AND A.gbn = #gbn#
+		</isNotEmpty>
+		<isNotEmpty property="type">
+				   AND A.type = #type#
+		</isNotEmpty>		
+		<![CDATA[
+		       )
+		 WHERE RNUM > #POS_STA#
+		   AND RNUM <= #POS_END#
+		]]>
+	</select>
+
+	<select id="getListCount" parameterClass="Param" resultClass="java.lang.Integer">
+		<![CDATA[
+		  		SELECT COUNT(*)
+		  		  FROM T_MEDIA A
+		  		 WHERE A.STATUS = 'S'
+		]]>
+				   AND A.SITE_CODE = #site_code#
+				   AND a.wdate <![CDATA[<]]> TO_CHAR(SYSDATE , 'yyyy.mm.dd hh24:mi:ss')				   
+		<isNotEmpty property="type">
+				   AND A.type = #type#
+		</isNotEmpty>				
+		<isNotEmpty property="gbn">
+				   AND A.gbn = #gbn#
+		</isNotEmpty>
+	</select>
+	
+	<select id="getInfo" parameterClass="Param" resultClass="Param">
+		SELECT seq, site_code, year, month, subject, thumbnail, sub, LINK, cffile, regist_date, status, gbn, type,
+		(SELECT NAME2 FROM T_CODE2 WHERE CODE1 = '63' AND CODE2 = A.type) type_name, wdate,
+		link_url
+		  FROM T_MEDIA a
+		 WHERE SEQ = #seq#
+		   and A.STATUS = 'S'
+	</select>
+
+
+</sqlMap>

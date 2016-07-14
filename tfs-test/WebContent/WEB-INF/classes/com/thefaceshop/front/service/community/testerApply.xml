@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="TesterApply"> 
+	<select id="getList" resultClass="Param" parameterClass="Param">
+		<![CDATA[
+		SELECT * 
+		  FROM 
+		       (SELECT 
+		              /*+index_desc(a pk_tester_apply) use_nl(a b) ordered */ 
+		              ROWNUM rnum, 
+		              a.master_seq, 
+		              a.apply_seq, 
+		              a.url,
+		              a.url2,
+		              a.contents,
+		              a.status,
+		              DECODE(a.status, 'S', '활성', 'H', '비활성') status_name, 
+		              a.mem_id, 
+		              TO_CHAR(a.regist_date, 'yyyy.mm.dd') regist_date,
+		              (SELECT count(*)
+		                 FROM t_tester_winner
+		                WHERE master_seq = a.master_seq AND mem_id = a.mem_id) winner_cnt 
+		         FROM t_tester_apply a
+		        WHERE a.master_seq = #master_seq#
+		          AND a.status = 'S'
+		]]>
+		<isNotEmpty property="mem_id">
+		    AND a.mem_id = #mem_id# 
+		</isNotEmpty>
+		<![CDATA[
+		          AND ROWNUM <= #POS_END# 
+		       ) 
+		 WHERE rnum > #POS_STA#
+		]]>
+  	</select>
+
+	<select id="getListCount" parameterClass="Param" resultClass="Integer">
+		<![CDATA[
+		 SELECT count(*)
+		   FROM t_tester_apply a
+		  WHERE master_seq = #master_seq#
+		    AND status = 'S'
+		]]>
+		<isNotEmpty property="mem_id">
+		    AND a.mem_id = #mem_id# 
+		</isNotEmpty>
+	</select>
+
+	<select id="getInfo" resultClass="Param" parameterClass="Param">
+		 SELECT a.master_seq, a.apply_seq, a.url, a.url2, a.contents, 
+          		a.mem_id, TO_CHAR(a.regist_date, 'yyyy.mm.dd') regist_date
+		   FROM t_tester_apply a
+		   WHERE 1= 1
+		  <isNotEmpty property="apply_seq">
+		    AND a.apply_seq = #apply_seq# 
+		</isNotEmpty>
+		<isNotEmpty property="mem_id">
+		    AND a.mem_id = #mem_id# 
+		</isNotEmpty>
+		<isNotEmpty property="master_seq">
+		    AND a.master_seq = #master_seq# 
+		</isNotEmpty>
+		    AND a.status = 'S' 
+	</select>
+
+	<insert id="insert" parameterClass="Param">
+		 INSERT
+		   INTO t_tester_apply
+		    (
+		        apply_seq,
+		        master_seq,
+		        url,
+		        contents,
+		        status,
+		        mem_id,
+		        regist_date,
+		        url2
+		    )
+		    VALUES
+		    (
+		        seq_tester_apply.NEXTVAL,
+		        #master_seq#,
+		        #url#,
+		        #contents#,
+		        'S',
+		        #mem_id#,
+		        SYSDATE,
+		        #url2#
+		    )
+	</insert>
+
+	<update id="update" parameterClass="Param">
+		UPDATE t_tester_apply
+		   SET url       = #url#,
+		   		 url 		= #url2#,
+		       contents  = #contents#
+		 WHERE apply_seq = #apply_seq#
+		<isNotEmpty property="mem_id">
+		   AND mem_id = #mem_id# 
+		</isNotEmpty>
+	</update>
+	
+	<delete id="delete" parameterClass="Param">
+		UPDATE t_tester_apply
+		   SET status = 'D'
+		 WHERE apply_seq = #apply_seq#
+		   AND mem_id = #mem_id# 
+	</delete>
+	
+	<select id="getWinnerInfo" parameterClass="Param" resultClass="Param">  
+		 SELECT *
+           FROM t_tester_winner a 
+          WHERE a.master_seq = #master_seq# 
+	        AND a.mem_id = #mem_id#
+	</select>	
+</sqlMap>

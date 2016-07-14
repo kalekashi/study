@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="ExtCoupon">
+	<select id="getInfoBySerial" parameterClass="java.lang.String" resultClass="Param">
+		SELECT A.SERIAL, A.EXT_COUPON_SEQ, A.MEM_ID, 
+			   B.START_DATE, B.END_DATE, B.COUPON_TYPE, B.POINT
+		  FROM T_EXT_COUPON_SERIAL A, T_EXT_COUPON B
+		 WHERE A.EXT_COUPON_SEQ = B.EXT_COUPON_SEQ
+		   AND A.SERIAL = #serial#
+	</select>
+	
+	<select id="getInfo" parameterClass="java.lang.String" resultClass="Param">
+		SELECT *
+		  FROM T_EXT_COUPON
+		 WHERE EXT_COUPON_SEQ = #ext_coupon_seq#
+	</select>
+
+	<select id="getDetailList" parameterClass="java.lang.String" resultClass="Param">
+		SELECT B.*
+		  FROM T_EXT_COUPON_DETAIL A, T_COUPON B
+		 WHERE A.COUPON_SEQ = B.COUPON_SEQ
+		   AND A.EXT_COUPON_SEQ = #ext_coupon_seq#
+	</select>
+		
+	<update id="updateSerial" parameterClass="Param">
+		UPDATE T_EXT_COUPON_SERIAL
+		   SET MEM_ID		= #mem_id#,
+		   	   REGIST_DATE	= SYSDATE
+		 WHERE SERIAL		= #serial#
+	</update>
+
+</sqlMap>

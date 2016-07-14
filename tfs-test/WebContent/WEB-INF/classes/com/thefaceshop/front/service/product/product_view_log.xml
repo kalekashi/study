@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="ProductViewLog">
+	<insert id="insert" parameterClass="Param">
+		INSERT INTO t_product_view_log (mem_id, seq, dpid, view_date)
+			 VALUES (#login_id#, (SELECT NVL(MAX(seq), 0) + 1 FROM t_product_view_log WHERE mem_id = #login_id#), #dpid#, SYSDATE)
+	</insert>
+	
+	<select id="getListOfToday" resultClass="Param" parameterClass="Param">
+		 SELECT *
+		   FROM
+		    (
+		    	SELECT ROWNUM rnum, a.*
+		    	  FROM (
+						 SELECT l.dpid,
+						    l.cnt,
+						    l.view_date,
+						    b.pserial,
+						    b.title_l,
+						    b.title_s,
+						    i.image_path,
+						    i.image_name,
+						    f_price(l.dpid, #login_id#, #grade_code#) price
+						   FROM
+						    (
+						         SELECT dpid,
+						            COUNT(*) cnt,
+						            MAX(view_date) view_date
+						           FROM t_product_view_log
+						          WHERE mem_id = #login_id#
+						       GROUP BY dpid
+						    )
+						    l,
+						    t_product_display b,
+						    t_product_image i
+						  WHERE l.dpid       = b.dpid
+						    AND b.dpid       = i.dpid
+						    AND i.image_code = '04'
+						    AND i.seq        = 1
+						ORDER BY l.view_date DESC
+		    	  ) a
+				WHERE ROWNUM <![CDATA[<]]>= #POS_END#
+		    )
+		  WHERE rnum > #POS_STA#
+	</select>
+	
+	<select id="getListCountOfToday" resultClass="Integer" parameterClass="Param">
+						 SELECT COUNT(*)
+						   FROM
+						    (
+						         SELECT dpid,
+						            COUNT(*) cnt,
+						            MAX(view_date) view_date
+						           FROM t_product_view_log
+						          WHERE mem_id = #login_id#
+						       GROUP BY dpid
+						    )
+						    l,
+						    t_product_display b,
+						    t_product_image i
+						  WHERE l.dpid       = b.dpid
+						    AND b.dpid       = i.dpid
+						    AND i.image_code = '04'
+						    AND i.seq        = 1
+	</select>
+
+	<select id="getListOfTodayCookie" resultClass="Param" parameterClass="Param">
+		 SELECT d.dpid,
+		        d.title_s,
+			    m.cuprc,
+			    d.default_price,
+			    F_PRICE(d.dpid, #mem_id#, #grade_code#) price,
+			    i.image_path || i.image_name image_name,
+			    d.pserial,
+			    d.type,
+			    d.soldout,
+				l.active_stock
+		   FROM t_product_display d,
+			    t_product_image i,
+		        t_product_master m,
+		        t_wms_stock l
+		  WHERE d.dpid       = i.dpid
+		    AND d.pserial    = m.pserial(+)
+		    AND d.pserial    = l.pserial(+)
+		    AND d.status     = 'S'
+		    AND i.image_code = '04'
+		    AND i.seq        = 1
+			<iterate property="dpidList" prepend="AND d.dpid      IN " open="(" close=")" conjunction=",">
+			#dpidList[]#
+			</iterate>
+	</select>
+</sqlMap>

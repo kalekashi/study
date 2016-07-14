@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="DisableSale">
+	<select id="getInfo" parameterClass="Param" resultClass="Param">
+		 SELECT *
+		   FROM
+		    (
+		         SELECT row_number() over (order by a.disable_seq DESC) rnum,
+		            DECODE(
+		            (
+		                 SELECT COUNT(*) FROM t_disable_sale_case WHERE disable_seq = a.disable_seq
+		                    AND case_code                                           = '01'
+		            )
+		            , 0, 'N', 'Y') coupon_yn,
+		            DECODE(
+		            (
+		                 SELECT COUNT(*) FROM t_disable_sale_case WHERE disable_seq = a.disable_seq
+		                    AND case_code                                           = '02'
+		            )
+		            , 0, 'N', 'Y') gift_coupon_yn,
+		            DECODE(
+		            (
+		                 SELECT COUNT(*) FROM t_disable_sale_case WHERE disable_seq = a.disable_seq
+		                    AND case_code                                           = '03'
+		            )
+		            , 0, 'N', 'Y') ship_coupon_yn,
+		            DECODE(
+		            (
+		                 SELECT COUNT(*) FROM t_disable_sale_case WHERE disable_seq = a.disable_seq
+		                    AND case_code                                           = '04'
+		            )
+		            , 0, 'N', 'Y') giftcard_yn,
+		            DECODE(
+		            (
+		                 SELECT COUNT(*) FROM t_disable_sale_case WHERE disable_seq = a.disable_seq
+		                    AND case_code                                           = '05'
+		            )
+		            , 0, 'N', 'Y') ocb_use_yn,
+		            DECODE(
+		            (
+		                 SELECT COUNT(*) FROM t_disable_sale_case WHERE disable_seq = a.disable_seq
+		                    AND case_code                                           = '06'
+		            )
+		            , 0, 'N', 'Y') point_use_yn,
+		             DECODE(
+		            (
+		                 SELECT COUNT(*) FROM t_disable_sale_case WHERE disable_seq = a.disable_seq
+		                    AND case_code                                           = '07'
+		            )
+		            , 0, 'N', 'Y') ocb_grant_yn,
+		             DECODE(
+		            (
+		                 SELECT COUNT(*) FROM t_disable_sale_case WHERE disable_seq = a.disable_seq
+		                    AND case_code                                           = '08'
+		            )
+		            , 0, 'N', 'Y') point_grant_yn
+		          FROM t_disable_sale a,
+		            t_disable_sale_apply_grade b
+		          WHERE a.disable_seq  = b.disable_seq
+		            AND a.start_date  <![CDATA[<]]>= sysdate
+		            AND a.end_date    >= sysdate
+		            AND a.status = 'S'
+		            AND b.grade_code   = #grade_code#
+		            AND a.device_type IN ('A', #device_type#)
+		    )
+		  WHERE rnum = 1
+		  
+	</select>
+</sqlMap>

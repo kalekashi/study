@@ -1,0 +1,734 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="Event">
+
+	<resultMap id="EventInfo" class="Param">
+		<result property="seq" column="seq"></result>
+		<result property="site_code" column="site_code"></result>
+		<result property="title" column="title"></result>
+		<result property="title_s" column="title_s"></result>
+		<result property="contents_type" column="contents_type"></result>
+		<result property="contents" column="contents" jdbcType="CLOB" javaType="java.lang.String"></result>
+		<result property="contents_mobile" column="contents_mobile" jdbcType="CLOB" javaType="java.lang.String"></result>
+		<result property="contents_url" column="contents_url"></result>
+		<result property="contents_mobile_url" column="contents_mobile_url"></result>
+		<result property="start_date" column="start_date"></result>
+		<result property="end_date" column="end_date"></result>
+		<result property="image_name" column="image_name"></result>
+		<result property="image_mobile_name" column="image_mobile_name"></result>
+		<result property="simage_name" column="simage_name"></result>
+		<result property="hit" column="hit"></result>
+		<result property="brand_yn" column="brand_yn"></result> 
+		<result property="mall_yn" column="mall_yn"></result>
+		<result property="staff_yn" column="staff_yn"></result>
+		<result property="apply_code" column="apply_code"></result>
+		<result property="status" column="status"></result>
+		<result property="status_name" column="status_name"></result>
+		<result property="regist_user" column="regist_user"></result>
+		<result property="regist_date" column="regist_date"></result>
+		<result property="event_type" column="event_type"></result>
+		<result property="event_type_name" column="event_type_name"></result>
+		<result property="admin_name" column="admin_name"></result> 
+		<result property="url" column="url"></result>
+		<result property="site_name" column="site_name"></result> 
+		<result property="type" column="type"></result>
+		<result property="type_name" column="type_name"></result>
+		<result property="main_yn" column="main_yn"></result>
+		<result property="list_banner_yn" column="list_banner_yn"></result> 
+		<result property="icon" column="icon"></result>  
+		<result property="icon_name" column="icon_name"></result>  
+		<result property="rank" column="rank"></result>  
+	</resultMap>
+		
+	<select id="getList" resultMap="EventInfo" parameterClass="Param">  
+		<![CDATA[
+	     SELECT *
+		   FROM (
+				 SELECT 
+		]]>
+					<isNotEmpty property="sort">
+						<isEqual property="sort" compareValue="rank">
+							        /*+index_asc(a idx_event_rank) use_nl(a b c) ordered */ 
+						</isEqual>
+					</isNotEmpty>		
+					<isEmpty property="sort">
+		        					/*+index_desc(a pk_event) use_nl(a b c) ordered */ 
+					</isEmpty>
+		<![CDATA[									 		
+					    rownum rnum,
+					    a.seq,
+					    a.rank,
+					    a.site_code,
+					    a.title,
+					    a.title_s,
+					    a.contents_type,
+					    a.contents,
+					    a.contents_url,
+					    TO_CHAR(a.start_date, 'yyyy.mm.dd') start_date,
+					    TO_CHAR(a.end_date, 'yyyy.mm.dd') end_date, 
+					    a.image_name, a.simage_name,
+					    a.hit,
+					    a.status,
+					    DECODE(a.status, 'S', '활성', 'H', '비활성', 'D', '삭제') status_name,
+					    TO_CHAR(a.regist_date, 'yyyy.mm.dd') regist_date,
+					    a.type,
+					    DECODE(a.type, 'P', 'PC', 'M', '모바일', 'C', 'PC/모바일') type_name,
+					    b.name admin_name, a.regist_user,
+					    DECODE(F_EVENT_TYPE(a.seq), '01', '진행중', '02', '완료', '03', '대기') event_type_name,
+					    F_EVENT_TYPE(a.seq) event_type, a.url,
+					    c.name site_name,
+					    a.main_yn,
+					    a.icon,
+					    (select name2 from t_code2 where code1 = '85' and code2 = a.icon) icon_name,
+					    a.contents_mobile,
+					    a.contents_mobile_url,
+					    a.image_mobile_name,
+					    a.brand_yn, a.mall_yn, staff_yn,
+					    a.apply_code,
+					    a.list_banner_yn
+				   FROM t_event a, t_admin b, t_site c
+				  WHERE a.seq > 0 
+				    and a.rank > 0
+				  	AND a.regist_user = b.adminid(+)
+				    AND a.site_code = c.site_code
+				    AND a.status <> 'D'
+		]]>
+		<isNotEmpty property="site_code">
+					AND a.site_code = #site_code#
+		</isNotEmpty>
+		<isNotEmpty property="event_type">
+					AND F_EVENT_TYPE(a.seq) = #event_type#
+		</isNotEmpty>
+		<isNotEmpty property="status">
+					AND a.status = #status#
+		</isNotEmpty>
+		<isNotEmpty property="type">
+					AND a.type = #type#
+		</isNotEmpty>
+		<isNotEmpty property="main_yn">
+					AND a.main_yn = #main_yn#
+		</isNotEmpty>
+		<isNotEmpty property="brand_yn">
+					AND a.brand_yn = #brand_yn#
+		</isNotEmpty>
+		<isNotEmpty property="mall_yn">
+					AND a.mall_yn = #mall_yn#
+		</isNotEmpty>
+		<isNotEmpty property="staff_yn">
+					AND a.staff_yn = #staff_yn#
+		</isNotEmpty>
+		<isNotEmpty property="icon">
+					AND a.icon = #icon#
+		</isNotEmpty>								
+		<isNotEmpty property="expire_yn">
+			<isEqual property="expire_yn" compareValue="N">
+					AND end_date >= TRUNC(SYSDATE)
+			</isEqual>
+		</isNotEmpty>
+		<isNotEmpty property="keyword">
+		    <isEqual property="keytype" compareValue="01">
+		        	AND a.title like '%' || #keyword# || '%'
+		    </isEqual>
+		    <isEqual property="keytype" compareValue="02">
+		        	AND a.contents like '%' || #keyword# || '%'
+		    </isEqual>
+   		</isNotEmpty>
+		<isNotEmpty property="authid">
+					AND a.site_code IN (SELECT site_code FROM t_site_auth WHERE adminid = #authid#)
+		</isNotEmpty>
+				    AND (
+		                  (brand_yn = #BrandYN# AND mall_yn = 'N' AND staff_yn = 'N')
+		                  OR (brand_yn = 'N' AND mall_yn = #MallYN# AND staff_yn = 'N')
+		                  OR (brand_yn = 'N' AND mall_yn = 'N' AND staff_yn = #StaffYN#)
+				    )
+		<![CDATA[
+			        AND rownum <= #POS_END#
+		    )
+		  WHERE rnum > #POS_STA#
+		]]>
+  	</select>
+
+	<select id="getListCount" parameterClass="Param" resultClass="Integer">
+		<![CDATA[
+		 SELECT count(*)
+		   FROM t_event a, t_admin b, t_site c
+		  WHERE a.regist_user = b.adminid(+)
+		    AND a.site_code = c.site_code
+		    AND a.status <> 'D'
+		]]>
+		<isNotEmpty property="site_code">
+			AND a.site_code = #site_code#
+		</isNotEmpty>
+		<isNotEmpty property="event_type">
+			AND F_EVENT_TYPE(a.seq) = #event_type#
+		</isNotEmpty>
+		<isNotEmpty property="status">
+			AND a.status = #status#
+		</isNotEmpty>
+		<isNotEmpty property="expire_yn">
+			<isEqual property="expire_yn" compareValue="N">
+			AND end_date > SYSDATE
+			</isEqual>
+		</isNotEmpty>
+		<isNotEmpty property="status">
+			AND a.status = #status#
+		</isNotEmpty>
+		<isNotEmpty property="type">
+			AND a.type = #type#
+		</isNotEmpty>
+		<isNotEmpty property="brand_yn">
+					AND a.brand_yn = #brand_yn#
+		</isNotEmpty>
+		<isNotEmpty property="mall_yn">
+					AND a.mall_yn = #mall_yn#
+		</isNotEmpty>
+		<isNotEmpty property="staff_yn">
+					AND a.staff_yn = #staff_yn#
+		</isNotEmpty>				
+		<isNotEmpty property="main_yn">
+			AND a.main_yn = #main_yn#
+		</isNotEmpty>
+		<isNotEmpty property="icon">
+					AND a.icon = #icon#
+		</isNotEmpty>							
+		<isNotEmpty property="keyword">
+		    <isEqual property="keytype" compareValue="01">
+        	AND a.title like '%' || #keyword# || '%'
+		    </isEqual>
+		    <isEqual property="keytype" compareValue="02">
+        	AND a.contents like '%' || #keyword# || '%'
+		    </isEqual>
+   		</isNotEmpty>
+		<isNotEmpty property="authid">
+			AND a.site_code IN (SELECT site_code FROM t_site_auth WHERE adminid = #authid#)
+		</isNotEmpty>
+		    AND (
+                  (brand_yn = #BrandYN# AND mall_yn = 'N' AND staff_yn = 'N')
+                  OR (brand_yn = 'N' AND mall_yn = #MallYN# AND staff_yn = 'N')
+                  OR (brand_yn = 'N' AND mall_yn = 'N' AND staff_yn = #StaffYN#)
+		    )		
+	</select>
+  	
+	<select id="getInfo" resultMap="EventInfo" parameterClass="Param">
+		<![CDATA[
+		 SELECT a.seq,
+		 		a.rank,
+		        a.site_code,
+			    a.title,
+			    a.title_s,
+			    a.contents_type,
+			    a.contents,
+			    a.contents_url,
+			    TO_CHAR(a.start_date, 'yyyy.mm.dd') start_date,
+			    TO_CHAR(a.end_date, 'yyyy.mm.dd') end_date,
+			    a.image_name, a.simage_name,
+			    a.hit,
+			    a.status,
+			    DECODE(a.status, 'S', '활성', 'H', '비활성', 'D', '삭제') status_name,
+			    TO_CHAR(a.regist_date, 'yyyy.mm.dd') regist_date,
+			    a.type,
+			    DECODE(a.type, 'P', 'PC', 'M', '모바일', 'C', 'PC/모바일') type_name,
+			    b.name admin_name, a.regist_user,
+			    DECODE(F_EVENT_TYPE(a.seq), '01', '진행중', '02', '완료', '03', '대기') event_type_name,
+			    F_EVENT_TYPE(a.seq) event_type, a.url, c.name site_name,
+			    a.main_yn,
+			    a.icon,
+			    (select name2 from t_code2 where code1 = '85' and code2 = a.icon) icon_name,
+			    a.contents_mobile,
+			    a.contents_mobile_url,
+			    a.image_mobile_name,
+			    a.brand_yn, a.mall_yn, staff_yn,
+			    a.apply_code,
+			    a.list_banner_yn				    
+		   FROM t_event a, t_admin b, t_site c
+		  WHERE a.regist_user = b.adminid(+)
+		    AND a.site_code = c.site_code
+		    AND a.status <> 'D'
+			AND a.seq = #seq#
+		]]>
+		<isNotEmpty property="site_code">
+			AND a.site_code = #site_code#
+		</isNotEmpty>
+  	</select>
+  	
+  	<select id="getNextSeq" resultClass="Integer">
+  		SELECT seq_event.NEXTVAL FROM dual
+  	</select>
+
+	<insert id="insert" parameterClass="Param"> 
+		 INSERT
+		   INTO t_event
+		    (
+		        seq,
+		        site_code,
+		        title,
+		        title_s,
+		        start_date,
+		        end_date,
+		        contents_type,
+		        contents,
+		        contents_url,
+		        image_name,
+		        simage_name,
+		        status,
+		        hit,
+		        url,
+		        regist_user,
+		        regist_date,
+		        type,
+		        main_yn,
+			    contents_mobile,
+			    contents_mobile_url,
+			    image_mobile_name,
+			    brand_yn,
+			    mall_yn,
+			    staff_yn,
+			    apply_code,
+			    icon,
+			    rank,
+			    list_banner_yn		        
+		    )
+		    VALUES
+		    (
+		        #seq#,
+		        #site_code#,
+		        #title#,
+		        #title_s#,
+		        TO_DATE(#start_date#, 'yyyy.mm.dd hh24:mi'),
+		        TO_DATE(#end_date#, 'yyyy.mm.dd hh24:mi'),
+		        #contents_type#,
+		        #contents#,
+		        #contents_url#,
+		        #image_name#,
+		        #simage_name#,
+		        #status#,
+		        0,
+		        #url#,
+		        #regist_user#,
+		        SYSDATE,
+		        #type#,
+		        NVL(#main_yn#, 'N'),
+			    #contents_mobile#,
+			    #contents_mobile_url#,
+			    #image_mobile_name#,
+			    NVL(#brand_yn#, 'N'),
+			    NVL(#mall_yn#, 'N'),
+			    NVL(#staff_yn#, 'N'),
+			    #apply_code#,			        
+			    #icon#,
+			    NVL(#rank#, 1),	
+			    #list_banner_yn#			        
+		    )
+	</insert>
+
+	<update id="update" parameterClass="Param">
+		UPDATE t_event
+		SET    site_code      = #site_code#,
+		       title          = #title#,
+		       title_s        = #title_s#,
+		       start_date     = TO_DATE(#start_date#, 'yyyy.mm.dd hh24:mi'),
+		       end_date       = TO_DATE(#end_date#, 'yyyy.mm.dd hh24:mi'),
+		       contents_type  = #contents_type#,
+		       contents       = #contents#,
+		       contents_url   = #contents_url#,
+		       image_name     = #image_name#,
+		       simage_name    = #simage_name#,
+		       status         = #status#,
+		       url            = #url#,
+		       type           = #type#,
+		       main_yn = NVL(#main_yn#, 'N'),
+			   contents_mobile= #contents_mobile#,
+			   contents_mobile_url = #contents_mobile_url#,
+			   image_mobile_name = #image_mobile_name#,
+			   brand_yn		    = NVL(#brand_yn#, 'N'),
+			   mall_yn			= NVL(#mall_yn#, 'N'),
+			   staff_yn			= NVL(#staff_yn#, 'N'),		       
+			   apply_code		= #apply_code#,		       
+			   icon		= #icon#,		       
+			   rank		= NVL(#rank#, 1),
+			   list_banner_yn = #list_banner_yn#		       
+		WHERE  seq            = #seq#
+	</update>
+
+	<update id="updateStatus" parameterClass="Param">
+		UPDATE t_event
+		SET    status         = #status#
+		WHERE  seq            = #seq#
+	</update>
+
+	<update id="delete" parameterClass="Param">
+		UPDATE t_event
+		SET    status    = 'D'
+		WHERE  seq             = #seq#
+	</update>
+
+	<update id="updateRank" parameterClass="Param">
+		UPDATE t_event
+		SET    rank         = #rank#
+		WHERE  seq            = #seq#
+	</update>
+	
+	
+	<select id="getApplyList" resultClass="Param" parameterClass="Param">
+		<![CDATA[
+	     SELECT *
+		   FROM (
+		   		SELECT /*+index_desc(a pk_event_apply) use_nl(a b c) ordered */
+					    rownum rnum,
+					    a.seq, 
+					    a.event_seq,
+              			TO_CHAR(a.regist_date, 'yyyy.mm.dd') regist_date,
+              			e.title, 
+              			e.title_s,
+              			e.contents_type,
+              			e.contents_url,
+              			TO_CHAR(e.start_date, 'yyyy.mm.dd') start_date,
+					    TO_CHAR(e.end_date, 'yyyy.mm.dd') end_date,
+					    DECODE(F_EVENT_TYPE(e.seq), '01', '진행중', '02', '완료', '03', '대기') event_type_name,
+					    F_EVENT_TYPE(e.seq) event_type, e.url
+				   FROM t_event_apply a, t_event e
+				  WHERE a.event_seq = e.seq(+)
+				    AND e.status <> 'D'
+		]]>
+		<isNotEmpty property="event_type">
+					AND F_EVENT_TYPE(e.seq) = #event_type#
+		</isNotEmpty>
+		<isNotEmpty property="site_code">
+					AND e.site_code = #site_code#
+		</isNotEmpty>
+		<isNotEmpty property="status">
+					AND e.status = #status#
+		</isNotEmpty>
+		<![CDATA[
+			        AND rownum <= #POS_END#
+		    )
+		  WHERE rnum > #POS_STA#
+		]]>
+  	</select>
+
+	<select id="getApplyListCount" parameterClass="Param" resultClass="Integer">
+		<![CDATA[
+		 SELECT count(*)
+		   FROM t_event_apply a, t_event e
+		  WHERE a.event_seq = e.seq(+)
+		 	AND e.status <> 'D'
+		]]>
+		<isNotEmpty property="event_type">
+			AND F_EVENT_TYPE(e.seq) = #event_type#
+		</isNotEmpty>
+		<isNotEmpty property="site_code">
+			AND e.site_code = #site_code#
+		</isNotEmpty>
+		<isNotEmpty property="status">
+			AND e.status = #status#
+		</isNotEmpty>
+	</select>
+	
+	<select id="getMyAttendanceList" parameterClass="Param" resultClass="Param">
+		SELECT days,
+		       NVL(b.check_date,'N') check_yn
+		  FROM 
+		       (SELECT TO_CHAR (base_mon + LEVEL - 1, 'yyyyMMdd') days 
+		         FROM 
+		              (SELECT TO_DATE (#sdate#, 'yyyyMMdd') base_mon 
+		                FROM DUAL
+		              ) CONNECT BY base_mon + LEVEL - 1 <![CDATA[<]]>= TO_DATE(#edate#,'yyyyMMdd')
+		       ) a, 
+		       (SELECT userid, 
+		              check_date, 
+		              TO_CHAR(regdate,'yyyy.MM.dd') 
+		         FROM t_attendance_log a 
+		        WHERE userid = #userid#
+	              AND check_date <![CDATA[>=]]> #sdate#
+	              AND check_date <![CDATA[<=]]> #edate#
+		       ) b 
+		 WHERE a.days = b.check_date(+) 
+		ORDER BY a.days	
+	</select>
+	
+	<select id="isCheckTodayAttendance" parameterClass="Param" resultClass="Integer">
+	   SELECT count(*)
+	     FROM t_attendance_log
+		WHERE userid = #userid#
+	      AND check_date = #check_date#
+	</select>
+	
+	<select id="getAttendanceCnt" parameterClass="Param" resultClass="Integer">
+	   SELECT count(*)
+	     FROM t_attendance_log
+		WHERE userid = #userid#
+	      AND check_date LIKE #check_month# || '%'
+	</select>
+	
+	<insert id="applyTodayAttendance" parameterClass="Param" >
+			INSERT INTO t_attendance_log
+			(userid, check_date, regdate) values
+			(#userid#, #check_date#, sysdate) 
+	</insert>
+	
+	<select id="isCheckJoinEvent" parameterClass="Param" resultClass="Integer">
+		select count(*) from t_event_join
+		WHERE userid = #userid#
+	</select>
+	
+	<insert id="applyJoinEvent" parameterClass="Param" >
+		INSERT INTO t_event_join
+			(userid, regdate) values
+			(#userid#, sysdate) 
+	</insert>	
+
+
+	<select id="getEventList" resultClass="Param" parameterClass="Param">
+		<![CDATA[
+		SELECT * 
+		  FROM 
+		       (SELECT 
+		              /*+index_desc(a pk_event_list) use_nl(a) ordered */ 
+		              ROWNUM rnum, 
+		              a.master_seq, 
+		              a.apply_seq, 
+		              a.url,
+		              a.contents,
+		              a.status,
+		              DECODE(a.status, 'S', '활성', 'H', '비활성') status_name, 
+		              a.mem_id, 
+		              TO_CHAR(a.regist_date, 'yyyy.mm.dd') regist_date,
+		              a.title,
+		              a.hit,
+		              a.image_name,
+		              type
+		         FROM t_event_list a
+		        WHERE a.master_seq = #master_seq#
+		          AND a.status <> 'D'
+		]]>
+		<isNotEmpty property="status">
+		          AND a.status = #status# 
+		</isNotEmpty>
+		<isNotEmpty property="type">
+		          AND a.type = #type# 
+		</isNotEmpty>
+		<![CDATA[
+		          AND ROWNUM <= #POS_END# 
+		       ) 
+		 WHERE rnum > #POS_STA#
+		]]>
+  	</select>
+
+	<select id="getEventListCount" parameterClass="Param" resultClass="Integer">
+		<![CDATA[
+		 SELECT count(*)
+		   FROM t_event_list
+		  WHERE master_seq = #master_seq#
+		    AND status <> 'D'
+		]]>
+		<isNotEmpty property="status">
+            AND status = #status# 
+		</isNotEmpty>
+		<isNotEmpty property="type">
+		          AND type = #type# 
+		</isNotEmpty>
+	</select>
+	
+	<insert id="insertEventList" parameterClass="Param">
+		 INSERT
+		   INTO t_event_list
+		    (
+		        apply_seq,
+		        master_seq,
+		        url,
+		        contents,
+		        status,
+		        mem_id,
+		        regist_date,
+		        title,
+		        image_name,
+		        type
+		    )
+		    VALUES
+		    (
+		        seq_event_list.NEXTVAL,
+		        #master_seq#,
+		        #url#,
+		        #contents#,
+		        NVL(#status#, 'S'),
+		        #mem_id#,
+		        SYSDATE,
+		        #title#,
+		        #image_name#,
+		        #type#
+		    )
+	</insert>
+
+	<update id="updateEventList" parameterClass="Param">
+		UPDATE t_event_list
+		   SET url       = #url#,
+		       contents  = #contents#,
+		       title 	= #title#,
+		       image_name = #image_name#
+		 WHERE apply_seq = #apply_seq#
+		<isNotEmpty property="mem_id">
+		   AND mem_id = #mem_id# 
+		</isNotEmpty>
+	</update>
+	
+	<delete id="deleteEventList" parameterClass="Param">
+		UPDATE t_event_list
+		   SET status = 'D'
+		 WHERE apply_seq = #apply_seq#
+		<isNotEmpty property="mem_id">
+		   AND mem_id = #mem_id# 
+		</isNotEmpty>
+	</delete>
+	
+	<select id="getEventInfo" resultClass="Param" parameterClass="Param">
+		 SELECT a.master_seq, a.apply_seq, a.url, a.contents, a.type, a.image_name, title,
+          		a.mem_id, TO_CHAR(a.regist_date, 'yyyy.mm.dd') regist_date
+		   FROM t_event_list a
+		   WHERE 1= 1
+		  <isNotEmpty property="apply_seq">
+		    AND a.apply_seq = #apply_seq# 
+		</isNotEmpty>
+		<isNotEmpty property="mem_id">
+		    AND a.mem_id = #mem_id# 
+		</isNotEmpty>
+		<isNotEmpty property="master_seq">
+		    AND a.master_seq = #master_seq# 
+		</isNotEmpty>
+		<isNotEmpty property="status">
+		    AND a.status = #status# 
+		</isNotEmpty>
+	</select>
+	
+	<update id="increaseEventHit" parameterClass="Integer">
+		UPDATE t_event_list
+		SET    hit    = hit + 1
+		WHERE  apply_seq    = #value#
+	</update>
+	
+	<insert id="insertEventGift" parameterClass="Param">
+		INSERT INTO T_EVENT_GIFT(
+			seq, mem_id, code, regist_date)
+		VALUES(
+			SEQ_EVENT_GIFT.NEXTVAL, #mem_id#, #code#, SYSDATE)
+	</insert>
+	
+	<update id="updateEventGiftCode" parameterClass="Param">
+		UPDATE T_EVENT_GIFT_CODE
+		SET use_yn = 'Y'
+		WHERE code = #code#
+	</update>
+	
+	<update id="updateEventGiftOrder" parameterClass="Param">
+		UPDATE T_EVENT_GIFT
+		SET order_yn = 'Y'
+		WHERE mem_id = #mem_id#
+	</update>
+	
+	<select id="getEventGift" parameterClass="Param" resultClass="Param">
+		SELECT A.code, B.type, A.order_yn, B.use_yn
+		FROM T_EVENT_GIFT A, T_EVENT_GIFT_CODE B
+		WHERE A.code = B.code
+		AND mem_id = #mem_id#
+		<isNotEmpty property="code">
+		AND B.code = #code#
+		</isNotEmpty>
+	</select>
+	
+	<select id="getEventGiftCode" parameterClass="Param" resultClass="Param">
+		SELECT code, type, use_yn
+		FROM T_EVENT_GIFT_CODE
+		WHERE code = #code#
+	</select>
+	
+	<select id="getEventGiftCoupon" parameterClass="Param" resultClass="java.lang.Integer">
+		SELECT COUNT(*)
+		FROM T_EVENT_GIFT
+		WHERE code = #code#
+	</select>
+	
+	<delete id="deleteCate" parameterClass="Integer">
+		 DELETE t_event_apply_cate
+		  WHERE seq    = #value#
+	</delete>
+
+	<insert id="insertCate" parameterClass="Param">
+		 INSERT
+		   INTO t_event_apply_cate
+		    (
+		        site_code,
+			    seq,
+			    cate_seq,
+		        regist_user,
+		        regist_date
+		    )
+		    VALUES
+		    (
+		        #site_code#,
+		        #seq#,
+		        #cate_seq#,
+		        #regist_user#,
+		        SYSDATE
+		    ) 
+	</insert>
+
+	<delete id="deleteProduct" parameterClass="Integer">
+		 DELETE t_event_apply_product
+		  WHERE seq    = #value#
+	</delete>
+
+	<insert id="insertProduct" parameterClass="Param">
+		 INSERT
+		   INTO t_event_apply_product
+		    (
+		        site_code,
+			    seq,
+			    dpid,
+			    title,
+			    gseq,
+		        regist_user,
+		        regist_date
+		    )
+		    VALUES
+		    (
+		        #site_code#,
+		        #seq#,
+		        #dpid#,
+		        #title#,
+		        #gseq#,
+		        #regist_user#,
+		        SYSDATE
+		    ) 
+	</insert>	
+	
+	<select id="getCateList" resultClass="Param" parameterClass="Param">
+		 SELECT level,
+			    a.cate_seq,
+			    SYS_CONNECT_BY_PATH(a.cate_name, '>') path,
+			    SYS_CONNECT_BY_PATH(a.cate_seq, '>') seq_path
+		   FROM t_cate a
+		  WHERE a.site_code = #site_code#
+		    AND a.cate_seq IN
+			    (
+			         SELECT cate_seq
+			           FROM t_event_apply_cate
+			          WHERE seq = #seq#
+			    )
+		    START WITH a.p_cate_seq     = 0
+		    CONNECT BY PRIOR a.cate_seq = a.p_cate_seq
+		ORDER SIBLINGS BY a.site_code, a.grp_seq, a.rank
+  	</select>
+  	
+	<select id="getProductList" resultClass="Param" parameterClass="Integer">
+		 SELECT a.dpid,
+		 		a.title,
+		 		a.gseq,
+			    b.title_s,
+			    b.pserial
+		   FROM t_event_apply_product a,
+			    t_product_display b
+		  WHERE a.dpid     = b.dpid
+		    AND a.seq = #value#
+		    ORDER BY gseq
+  	</select>  		
+</sqlMap>

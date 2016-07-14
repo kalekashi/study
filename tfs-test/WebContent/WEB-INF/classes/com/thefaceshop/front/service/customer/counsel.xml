@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+ 
+<sqlMap namespace="Counsel">
+	<resultMap id="CounselInfo" class="Param">
+		<result property="seq" column="seq"></result>
+		<result property="title" column="title"></result>
+		<result property="question" column="question" jdbcType="CLOB" javaType="java.lang.String"></result>
+		<result property="answer" column="answer" jdbcType="CLOB" javaType="java.lang.String"></result>
+		<result property="counsel_type_name" column="counsel_type_name"></result>
+		<result property="hit" column="hit"></result>
+		<result property="status" column="status"></result>
+		<result property="mem_id" column="mem_id"></result>
+		<result property="complete_yn" column="complete_yn"></result>
+		<result property="cs_yn" column="cs_yn"></result>
+		<result property="counsel_date" column="counsel_date"></result>
+		<result property="regist_date" column="regist_date"></result>
+		<result property="reply_filename1" column="reply_filename1"></result>
+		<result property="reply_filename2" column="reply_filename2"></result>
+		<result property="reply_filename3" column="reply_filename3"></result>
+		<result property="notify_sms" column="notify_sms"></result>
+		<result property="notify_email" column="notify_email"></result>
+		<result property="name" column="name"></result>
+	</resultMap>
+    <sql id="Counsel.getListParam">
+		<isNotEmpty property="counsel_type">
+					AND a.counsel_type = #counsel_type#
+		</isNotEmpty>
+		<isNotEmpty property="complete_yn">
+					AND a.complete_yn = #complete_yn#
+		</isNotEmpty>
+		<isNotEmpty property="keyword">
+		    <isEqual property="keytype" compareValue="01">
+		        	AND a.title like '%' || #keyword# || '%'
+		    </isEqual>
+		    <isEqual property="keytype" compareValue="02">
+		        	AND a.question like '%' || #keyword# || '%'
+		    </isEqual>
+		    <isEqual property="keytype" compareValue="03">
+		        	AND (a.title like '%' || #keyword# || '%' or a.question like '%' || #keyword# || '%')
+		    </isEqual>		    
+   		</isNotEmpty>    
+    </sql>
+    
+	<select id="getList" resultMap="CounselInfo" parameterClass="Param">
+		<![CDATA[
+	     SELECT *
+		   FROM (
+				 SELECT /*+index_desc(a IDX_COUNSEL_SITE_CODE) */
+					    rownum rnum,
+					    a.seq,
+					    a.title,
+					    a.hit,
+					    a.status,
+					    DECODE(a.complete_yn, 'Y', '답변 완료', '답변준비중') complete_yn,
+					    a.mem_id,a.question,a.answer,
+					    TO_CHAR(a.regist_date, 'yyyy.mm.dd') regist_date,
+					    TO_CHAR(a.counsel_date, 'yyyy.mm.dd') counsel_date,
+					    a.counsel_type, (select name2 from t_code2 where code1='14' and code2 = counsel_type) counsel_type_name,
+					    reply_filename1, reply_filename2, reply_filename3, cs_yn, notify_email, notify_sms,
+					    (SELECT mem_nm FROM T_MEM WHERE mem_id = a.mem_id) name
+				   FROM t_counsel a
+				  WHERE site_code = #site_code#
+				    AND a.seq > 0
+				    AND a.status = 'S'
+				    AND a.mem_id = #mem_id#
+		]]>
+		<include refid="Counsel.getListParam"/>
+		<![CDATA[
+			        AND rownum <= #POS_END#
+		    )
+		  WHERE rnum > #POS_STA#
+		]]>
+  	</select>
+
+	<select id="getListCount" parameterClass="Param" resultClass="Integer">
+		<![CDATA[
+		 SELECT count(*)
+		   FROM t_counsel a
+		  WHERE site_code = #site_code#
+		    AND a.seq > 0
+		    AND a.status = 'S'
+		    AND a.mem_id = #mem_id#
+		]]>
+		<include refid="Counsel.getListParam"/>
+	</select>
+
+	<select id="getInfo" resultMap="CounselInfo" parameterClass="Param">
+		 SELECT /*+index_desc(a IDX_COUNSEL_SITE_CODE) */
+			    rownum rnum,
+			    a.seq,
+			    a.title,
+			    a.hit,
+			    a.status,
+			    DECODE(a.complete_yn, 'Y', '답변 완료', '답변준비중') complete_yn,
+			    a.mem_id,a.question,a.answer,
+			    TO_CHAR(a.regist_date, 'yyyy.mm.dd') regist_date,
+			    TO_CHAR(a.counsel_date, 'yyyy.mm.dd') counsel_date,
+			    a.counsel_type, (select name2 from t_code2 where code1='14' and code2 = counsel_type) counsel_type_name,
+			    reply_filename1, reply_filename2, reply_filename3, cs_yn, notify_email, notify_sms,
+			    (SELECT mem_nm FROM T_MEM WHERE mem_id = a.mem_id) name
+		   FROM t_counsel a
+		  WHERE site_code = #site_code#
+		    AND a.seq > 0
+		    AND a.status = 'S'
+		    AND a.seq = #seq#
+		<isNotEmpty property="mem_id">
+			AND a.mem_id = #mem_id#
+		</isNotEmpty>
+	</select>
+
+	<select id="getNextSeq" resultClass="Integer">
+		SELECT seq_counsel.NEXTVAL FROM dual
+	</select>
+	
+	<insert id="insert" parameterClass="Param">
+		 INSERT
+		   INTO t_counsel
+		    (
+		        seq,
+		        site_code,
+		        title,
+		        question,
+		        counsel_type,
+		        status,
+		        hit,
+		        mem_id,
+		        notify_sms,
+		        notify_email,
+		        cs_yn,
+		        mail_yn,
+		        complete_yn,
+		        reply_filename1,
+		        reply_filename2,
+		        reply_filename3,
+		        regist_date
+		    )
+		    VALUES
+		    (
+		        #seq#,
+		        #site_code#,
+		        #title#,
+		        #question#,
+		        #counsel_type#,
+		        NVL(#status#, 'S'),
+		        0,
+		        #mem_id#,
+		        #notify_sms#,
+		        #notify_email#, 
+		        'N',
+		        'N',
+		        'N',
+		        #reply_filename1#,
+		        #reply_filename2#,
+		        #reply_filename3#,		        
+		        SYSDATE
+		    )
+	</insert>
+
+	<update id="delete" parameterClass="Param">
+		UPDATE t_counsel
+		SET    status          = 'D'
+		WHERE  seq             = #seq#
+		AND	   mem_id      = #mem_id#
+	</update>
+
+	<update id="increaseHit" parameterClass="Param">
+		UPDATE t_counsel
+		SET    hit    = hit + 1
+		WHERE  seq    = #seq#
+	</update>
+	
+
+</sqlMap>

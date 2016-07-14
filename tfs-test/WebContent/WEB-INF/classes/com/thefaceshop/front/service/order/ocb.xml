@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="Ocb">
+	<insert id="insertLog" parameterClass="Param">
+		INSERT INTO t_ocb_new_log
+		(
+			orderid,
+			seq,
+			type,
+			identity,
+			reply_code,
+			reply_message,
+			nx_mct_no,
+			sub_mall_id,
+			sub_mall_name,
+			sub_mall_corp_no,
+			mct_id,
+			mct_tr_no,
+			mct_tr_date,
+			tx_no,
+			app_time,
+			amount,
+			point,
+			av_point,
+			acc_point,
+			dst_point,
+			dst_save_point,
+			regist_date
+		)
+		VALUES
+		(
+			#orderid#,
+			(
+				SELECT NVL(MAX(seq), 0) + 1 
+				  FROM t_ocb_new_log 
+				 WHERE orderid = #orderid#
+			),
+			#type#,
+			#identity#,
+			#reply_code#,
+			#reply_message#,
+			#nx_mct_no#,
+			#sub_mall_id#,
+			#sub_mall_name#,
+			#sub_mall_corp_no#,
+			#mct_id#,
+			#mct_tr_no#,
+			#mct_tr_date#,
+			#tx_no#,
+			#app_time#,
+			#amount#,
+			#point#,
+			#av_point#,
+			#acc_point#,
+			#dst_point#,
+			#dst_save_point#,
+			SYSDATE
+		)
+	</insert>
+	
+	<select id="getCancelInfo" resultClass="Param" parameterClass="String">
+		 SELECT a.mct_tr_no,
+		 		a.mct_tr_date,
+		 		a.tx_no,
+		        a.point,
+		        a.identity
+		   FROM t_ocb_new_log a
+		  WHERE a.orderid     = #value#
+		    AND a.type        ='U'
+		    AND a.reply_code = '000000'
+		    AND rownum = 1
+	</select>
+	
+	<select id="getSaveInfo" resultClass="Param" parameterClass="String">
+		SELECT a.name, a.amt + a.ship_amt amount, b.identity, 
+			   (SELECT sum(grant_ocb) FROM t_order_item WHERE orderid = a.orderid) grant_ocb
+		  FROM t_order_master a, t_order_ocb_save b
+		 WHERE a.orderid = b.orderid
+		   AND a.orderid = #value#
+	</select>
+	
+	<insert id="insertSaveInfo" parameterClass="Param">
+		INSERT INTO t_order_ocb_save
+		(orderid, identity)
+		VALUES
+		(#orderid#, #identity#)
+	</insert>
+</sqlMap>

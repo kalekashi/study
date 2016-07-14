@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="Payment">
+	
+	<insert id="insertPaymentLog" parameterClass="Param">
+		 INSERT
+		   INTO t_payment_log
+		    (
+		        orderid,
+		        seq,
+		        lgd_respcode,
+		        lgd_respmsg,
+		        lgd_mid,
+		        lgd_oid,
+		        lgd_amount,
+		        lgd_tid,
+		        lgd_paytype,
+		        lgd_paydate,
+		        lgd_financecode,
+		        lgd_financename,
+		        lgd_escrowyn,
+		        lgd_exchangerate,
+		        lgd_buyer,
+		        lgd_buyeremail,
+		        lgd_productinfo,
+		        lgd_cardnum,
+		        lgd_cardinstallmonth,
+		        lgd_cardnointyn,
+		        lgd_financeauthnum,
+		        lgd_cashreceiptnum,
+		        lgd_cashreceiptselfyn,
+		        lgd_cashreceiptkind,
+		        lgd_accountnum,
+		        lgd_castamount,
+		        lgd_cascamount,
+		        lgd_casflag,
+		        lgd_casseqno,
+		        lgd_payer,
+		        lgd_closedate,
+		        gift_receipt_yn,
+		        regist_date
+		    )
+		    VALUES
+		    (
+		        #orderid#,
+		        (SELECT NVL(MAX(seq), 0) + 1 FROM t_payment_log WHERE orderid = #orderid#),
+		        #lgd_respcode#,
+		        #lgd_respmsg#,
+		        #lgd_mid#,
+		        #lgd_oid#,
+		        #lgd_amount#,
+		        #lgd_tid#,
+		        #lgd_paytype#,
+		        #lgd_paydate#,
+		        #lgd_financecode#,
+		        #lgd_financename#,
+		        #lgd_escrowyn#,
+		        #lgd_exchangerate#,
+		        #lgd_buyer#,
+		        #lgd_buyeremail#,
+		        #lgd_productinfo#,
+		        #lgd_cardnum#,
+		        #lgd_cardinstallmonth#,
+		        #lgd_cardnointyn#,
+		        #lgd_financeauthnum#,
+		        #lgd_cashreceiptnum#,
+		        #lgd_cashreceiptselfyn#,
+		        #lgd_cashreceiptkind#,
+		        #lgd_accountnum#,
+		        #lgd_castamount#,
+		        #lgd_cascamount#,
+		        #lgd_casflag#,
+		        #lgd_casseqno#,
+		        #lgd_payer#,
+		        #lgd_closedate#,
+		        #gift_receipt_yn#,
+		        SYSDATE
+		    )
+	</insert>
+	
+	<insert id="insertPaymentKakaoLog" parameterClass="Param">
+	 INSERT
+	   INTO t_payment_kakao_log
+	    (
+	        orderid,
+	        seq,
+	        result_code,
+	        result_msg,
+	        auth_date,
+	        auth_code,
+	        pay_method,
+	        mid,
+	        tid,
+	        moid,
+	        amt,
+	        card_code,
+	        card_name,
+	        card_quota,
+	        card_interest,
+	        card_cl,
+	        card_bin,
+	        card_point,
+	        error_cd,
+	        error_msg,
+	        cancel_amt,
+	        cancel_date,
+	        cancel_time,
+	        state_cd,
+	        cc_part_cl,
+	        cancel_num,
+	        log_home,
+	        cns_pay_home,
+	        cancel_pwd,
+	        reg_date
+	    )
+	    VALUES
+	    (
+	        #orderid#,
+	        (SELECT NVL(MAX(seq), 0) + 1 FROM t_payment_kakao_log WHERE orderid = #orderid#),
+	        #result_code#,
+	        #result_msg#,
+	        #auth_date#,
+	        #auth_code#,
+	        #pay_method#,
+	        #mid#,
+	        #tid#,
+	        #moid#,
+	        #amt#,
+	        #card_code#,
+	        #card_name#,
+	        #card_quota#,
+	        #card_interest#,
+	        #card_cl#,
+	        #card_bin#,
+	        #card_point#,
+	        #error_cd#,
+	        #error_msg#,
+	        #cancel_amt#,
+	        #cancel_date#,
+	        #cancel_time#,
+	        #state_cd#,
+	        #cc_part_cl#,
+	        #cancel_num#,
+	        #log_home#,
+	        #cns_pay_home#,
+	        #cancel_pwd#,
+	        SYSDATE
+	    )
+	</insert>
+		
+	<select id="getPaymentInfo" parameterClass="String" resultClass="Param">
+		 SELECT *
+		   FROM
+		    (
+		         SELECT row_number() over(order by p.seq) rnum,
+		            o.pay_type,
+		            a.name2 pay_type_name,
+		            ship.status,
+		            p.*
+		           FROM t_order_master o,
+		            t_order_ship ship,
+		            t_payment_log p,
+		            t_code2 a
+		          WHERE o.orderid      = ship.orderid
+		            AND ship.orderid   = p.orderid
+		            AND o.pay_type     = a.code2
+		            AND a.code1        = '21'
+		            AND ship.orderid   = #value#
+		            AND ship.ship_seq  = 1
+		            AND p.lgd_respcode = '0000'
+		            AND (gift_receipt_yn is null OR gift_receipt_yn = 'N')
+		    )
+		  WHERE rnum = 1 
+	</select>
+	
+	<select id="getPaymentKakaoInfo" parameterClass="String" resultClass="Param">
+		 SELECT *
+		   FROM
+		    (
+		         SELECT row_number() over(order by p.seq) rnum,
+		            o.pay_type,
+		            a.name2 pay_type_name,
+		            ship.status,
+		            p.*
+		           FROM t_order_master o,
+		            t_order_ship ship,
+		            t_payment_kakao_log p,
+		            t_code2 a
+		          WHERE o.orderid      = ship.orderid
+		            AND ship.orderid   = p.orderid
+		            AND o.pay_type     = a.code2
+		            AND a.code1        = '21'
+		            AND ship.orderid   = #value#
+		            AND ship.ship_seq  = 1
+		            AND p.result_code = '3001'
+		    )
+		  WHERE rnum = 1 
+	</select>
+	
+	<select id="getPaytypeOf" parameterClass="String" resultClass="String">
+		SELECT pay_type FROM t_order_master WHERE orderid = #value#
+	</select>
+	
+	<update id="updateCancelY" parameterClass="String">
+		UPDATE t_order_master SET cancel_yn = 'Y'
+		 WHERE orderid = #value#
+	</update>
+	
+	<update id="updateShipCancelY" parameterClass="String">
+		UPDATE t_order_ship SET cancel_yn = 'Y'
+		 WHERE orderid = #value#
+		   AND ship_seq = 1
+	</update>
+</sqlMap>

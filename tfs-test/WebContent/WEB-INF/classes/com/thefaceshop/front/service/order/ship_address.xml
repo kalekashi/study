@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="ShipAddress">
+	<select id="getMemberAddress" resultClass="Param" parameterClass="String">
+		 SELECT a.mem_nm name,
+		 		a.email,
+			    a.tel,
+			    a.mobile,
+			    DECODE(a.home_road_name_addr_yn, 'Y', a.home_road_name_post_no, a.zip) post_no,
+			    DECODE(a.home_road_name_addr_yn, 'Y', a.home_road_name_addr1, a.addr1) addr1,
+			    DECODE(a.home_road_name_addr_yn, 'Y', a.home_road_name_addr2, a.addr2) addr2,
+			    a.conninfo ci,
+			    a.dupinfo di
+		   FROM t_mem a
+		  WHERE a.mem_id = #value#
+	</select>
+
+	<select id="getRecentAddress" resultClass="Param" parameterClass="String">
+		 SELECT *
+		   FROM
+		    (
+		         SELECT row_number() over (order by a.orderid DESC) rnum,
+			            a.name,
+			            a.tel1,
+			            a.tel2,
+			            a.tel3,
+			            a.mobile1,
+			            a.mobile2,
+			            a.mobile3,
+			            a.post_no,
+			            a.addr1,
+			            a.addr2
+		           FROM t_order_ship a,
+			            t_order_master b
+		          WHERE a.orderid = b.orderid
+		            AND b.mem_id  = #value#
+		    )
+		  WHERE rnum = 1 
+	</select>
+	
+	<select id="getList" resultClass="Param" parameterClass="String">
+		SELECT *
+		  FROM t_ship_address
+		 WHERE mem_id = #value#
+		 	and status = 'S'
+		 order by default_yn desc, seq desc	
+	</select>
+	
+	<select id="getInfo" resultClass="Param" parameterClass="Param">
+		SELECT *
+		  FROM t_ship_address
+		 WHERE seq = #seq#
+		   AND mem_id = #value#
+		   and status = 'S'
+	</select>	
+
+	<select id="getDefaultInfo" resultClass="Param" parameterClass="java.lang.String">
+		SELECT *
+		  FROM t_ship_address
+		 WHERE mem_id = #value#
+		   and status = 'S'
+		   and default_yn = 'Y'
+	</select>
+
+	<insert id="insert" parameterClass="Param">
+		INSERT INTO t_ship_address(seq, ship_name, NAME, mobile1, mobile2, mobile3, tel1, tel2, tel3, post_no, addr1, addr2, default_yn, site_code, mem_id,  status, regist_date)
+		VALUES(seq_ship_address.nextval, #ship_name#, #name#, #mobile1#, #mobile2#, #mobile3#, #tel1#, #tel2#, #tel3#, #post_no#, #addr1#, #addr2#, #default_yn#, #site_code#, #mem_id#, 'S', sysdate)
+	</insert>
+	
+	<update id="update" parameterClass="Param">
+		UPDATE t_ship_address
+		SET ship_name = #ship_name#
+		,	NAME = #name#
+		, 	mobile1 = #mobile1#
+		, 	mobile2 = #mobile2#
+		, 	mobile3 = #mobile3#
+		, 	tel1 	= #tel1#
+		, 	tel2 	= #tel2#
+		, 	tel3 	= #tel3#
+		, 	post_no = #post_no#
+		, 	addr1   = #addr1#
+		, 	addr2	= #addr2#
+		, 	default_yn = #default_yn#
+		WHERE seq = #seq#
+		 AND  mem_id = #mem_id#
+	</update>
+	
+	<update id="delete" parameterClass="Param"> 
+		UPDATE t_ship_address
+		SET status = #status#
+		WHERE seq = #seq#
+		 AND  mem_id = #mem_id#
+	</update>
+
+	<update id="deleteDefault" parameterClass="java.lang.String">
+		UPDATE t_ship_address
+		SET default_yn = 'N'
+		WHERE mem_id = #mem_id#  
+	</update>
+		
+	<update id="updateDefault" parameterClass="Param">
+		UPDATE t_ship_address
+		SET default_yn = 'Y'
+		WHERE seq = #seq#
+		 AND  mem_id = #mem_id#  
+	</update>	
+</sqlMap>

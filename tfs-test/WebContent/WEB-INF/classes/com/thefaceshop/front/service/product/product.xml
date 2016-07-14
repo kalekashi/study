@@ -1,0 +1,679 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="Product">
+	<cacheModel type="LRU" id="productInfo">
+		<flushInterval seconds="1"/>
+	</cacheModel>
+
+	<cacheModel type="LRU" id="featureGroupList">
+		<flushInterval minutes="30"/>
+	</cacheModel>
+
+	<cacheModel type="LRU" id="imageList">
+		<flushInterval seconds="1"/>
+	</cacheModel>
+	
+	<cacheModel type="LRU" id="optionList">
+		<flushInterval seconds="1"/>
+	</cacheModel>
+
+	<select id="getFeatureGroupList" resultClass="Param" parameterClass="Param" cacheModel="featureGroupList">
+	<![CDATA[		
+		 SELECT DISTINCT d.name1, e.name2, b.code1, b.code2, e.rank 
+		 FROM T_PRODUCT_DISPLAY a, t_product_feature b , T_PRODUCT_CATE C , T_CODE1 d, T_CODE2 e
+		 WHERE a.dpid = b.dpid
+		 AND A.DPID = C.DPID
+		 AND a.status ='S'
+		 AND d.status ='S'
+		 AND e.status ='S'
+		 AND a.list_yn = 'Y'
+		 AND a.start_date <= SYSDATE
+		 AND a.end_date >= SYSDATE			 
+		 AND c.cate_seq  IN 
+		 ( 	SELECT 
+                      a.cate_seq
+                 FROM t_cate a
+                WHERE a.status = 'S'
+                  AND a.site_code = #site_code#
+                  AND a.CATE_SEQ > 0 
+           START WITH a.cate_seq = #cate_seq#
+           CONNECT BY prior a.cate_seq = a.p_cate_seq
+		  )
+		 AND b.code1 = d.code1
+		 AND b.code1 = e.code1
+		 AND b.code2 = e.code2
+		 ORDER BY b.code1 , e.rank
+	]]>
+	</select>	
+	
+	<resultMap id="infoMap" class="Param">
+		<result property="dpid" column="dpid"></result>
+		<result property="grade_code" column="grade_code"></result>
+		<result property="device_type" column="device_type"></result>
+		<result property="price" column="price"></result>
+		<result property="point_rate" column="point_rate"></result>
+		<result property="promotion_gift" column="promotion_gift"></result>
+		<result property="promotion_discount" column="promotion_discount"></result>
+		<result property="promotion_online" column="promotion_online"></result>
+		<result property="coupon_yn" column="coupon_yn"></result>
+		<result property="image_original" column="image_original"></result>
+		<result property="image_large" column="image_large"></result>
+		<result property="image_medium" column="image_medium"></result>
+		<result property="image_small" column="image_small"></result>
+		<result property="image_thumb" column="image_thumb"></result>
+		<result property="review_cnt" column="review_cnt"></result>
+		<result property="review_score_avg" column="review_score_avg"></result>
+		<result property="feature_01" column="feature_01"></result>
+		<result property="feature_02" column="feature_02"></result>
+		<result property="feature_03" column="feature_03"></result>
+		<result property="feature_04" column="feature_04"></result>
+		<result property="feature_05" column="feature_05"></result>
+		<result property="feature_01_title" column="feature_01_title"></result>
+		<result property="feature_02_title" column="feature_02_title"></result>
+		<result property="feature_03_title" column="feature_03_title"></result>
+		<result property="feature_04_title" column="feature_04_title"></result>
+		<result property="feature_05_title" column="feature_05_title"></result>		
+		<result property="option_cnt" column="option_cnt"></result>
+		<result property="site_code" column="site_code"></result>
+		<result property="pserial" column="pserial"></result>
+		<result property="title_l" column="title_l"></result>
+		<result property="title_s" column="title_s"></result>
+		<result property="tag" column="tag"></result>
+		<result property="default_price" column="default_price"></result>
+		<result property="show_grade_type" column="show_grade_type"></result>
+		<result property="soldout" column="soldout"></result>
+		<result property="summary" column="summary"></result>
+		<result property="contents" column="contents" jdbcType="CLOB" javaType="java.lang.String"></result>
+		<result property="spec_type" column="spec_type"></result>
+		<result property="active_stock" column="active_stock"></result>
+		<result property="cate_seq" column="cate_seq"></result>
+		<result property="capacity" column="capacity"></result>		
+		<result property="line_cate_seq" column="line_cate_seq"></result>	
+		<result property="use_opt_img_yn" column="use_opt_img_yn"></result>	
+		<result property="cf_use_yn" column="cf_use_yn"></result>
+		<result property="cf_bg_file" column="cf_bg_file"></result>
+		<result property="cf_url" column="cf_url"></result>				
+		<result property="type" column="type"></result>				
+	</resultMap>
+			
+	<select id="getInfo" resultMap="infoMap" resultClass="Param" cacheModel="productInfo">
+		<![CDATA[		
+		SELECT 
+		    pc.dpid, pc.grade_code, pc.device_type, pc.price, pc.point_rate,   
+		    pc.promotion_gift,	pc.promotion_discount, pc.promotion_online, pc.image_original, pc.image_large, pc.image_medium, pc.image_small, pc.image_thumb, 
+		    pc.review_cnt, pc.review_score_avg, pc.feature_01, pc.feature_02, pc.feature_03, pc.feature_04, pc.feature_05, pc.option_cnt,
+			pc.feature_01_title,pc.feature_02_title,pc.feature_03_title,pc.feature_04_title,pc.feature_05_title,			
+		    display.site_code, display.pserial, display.title_l, display.title_s, display.tag, display.default_price, display.show_grade_type,
+		    display.soldout, display.summary, display.contents, display.spec_type, display.capacity, display.use_opt_img_yn, display.type,
+			f_active_stock(display.dpid) active_stock, display.cf_use_yn, display.cf_bg_file, display.cf_url, display.coupon_yn,
+            (SELECT cate_seq
+             FROM T_PRODUCT_CATE PRDCATE 
+            WHERE PRDCATE.dpid = pc.dpid	
+            AND PRDCATE.cate_seq IN 
+            (
+                 SELECT cate_seq
+                   FROM t_cate
+                  WHERE site_code         = #site_code#
+                    AND status            = 'S'
+                    START WITH cate_seq   = 1
+                    CONNECT BY prior cate_seq = p_cate_seq
+             )
+             AND ROWNUM =1 ) cate_seq,
+            (SELECT cate_seq
+             FROM T_PRODUCT_CATE PRDCATE 
+            WHERE PRDCATE.dpid = pc.dpid	
+            AND PRDCATE.cate_seq IN 
+            (
+                 SELECT cate_seq
+                   FROM t_cate
+                  WHERE site_code         = #site_code#
+                    AND status            = 'S'
+                    START WITH cate_seq   = 2
+                    CONNECT BY prior cate_seq = p_cate_seq
+             )
+             AND ROWNUM =1 ) line_cate_seq
+		 FROM 
+			t_product_cache pc, 
+		    t_product_display display
+		WHERE pc.dpid = display.dpid
+        AND display.dpid= #dpid#        		    
+        AND display.site_code = #site_code# 
+	    AND display.start_date <= SYSDATE
+	    AND display.end_date >= SYSDATE	
+		AND display.approval_yn = 'Y'
+		AND display.type       <> 'G'	    
+		AND display.status ='S'					    
+		]]>
+		<include refid="Common.productCache"/>		
+		<isNotEmpty property="list_yn">
+			AND display.list_yn	= #list_yn# 
+		</isNotEmpty>			    			    
+		<isNotEmpty property="show_grade_type">
+			<isEqual property="show_grade_type" compareValue="Y">
+			AND display.show_grade_type	in ('A', 'E')
+			</isEqual>	
+			<isNotEqual property="show_grade_type" compareValue="Y">
+			AND display.show_grade_type	in ('A', 'S')
+			</isNotEqual>
+		</isNotEmpty>		
+	</select>
+	
+	<select id="getFeatureList" resultClass="Param" parameterClass="Param">
+		SELECT /*+ INDEX_ASC ( feature.PK_PRODUCT_FEATURE ) */ 
+				dpid, rank, code1, code2,
+				(SELECT name2 FROM T_CODE2 WHERE code1 = feature.code1 AND code2 = feature.code2) feature_name
+		FROM t_product_feature feature
+		WHERE dpid= #dpid#
+		AND RANK > 0		 
+	</select>
+	
+	<select id="getOptionListForCart" resultClass="Param" parameterClass="Param">
+		 SELECT a.dpid,
+		 		b.title_s opt_title_s,
+		        a.opt_dpid,
+		        pc.price opt_price,
+		        pc.point_rate opt_point_rate,
+		        a.title opt_title,
+		        f_active_stock(b.dpid) opt_stock,
+		        b.soldout opt_soldout
+		   FROM t_product_option a, 
+		   		t_product_cache pc, 
+		   		t_product_display b
+	      WHERE a.opt_dpid = pc.dpid
+	        AND a.opt_dpid = b.dpid
+	        AND a.dpid IN (
+	    	<iterate property="dpidList" conjunction=","> 
+	    		#dpidList[]#
+	    	</iterate>
+	    	)
+	    	<include refid="Common.productCache"/>
+		ORDER BY dpid, rank
+	</select>
+	
+	<resultMap id="spec" class="Param">
+		<result property="code2" column="code2"></result>
+		<result property="name2" column="name2"></result>
+		<result property="spec_code" column="spec_code"></result> 
+		<result property="spec" column="spec" jdbcType="CLOB" javaType="java.lang.String"></result>
+	</resultMap>
+
+	<select id="getSpecList" resultMap="spec" parameterClass="Param">
+		<![CDATA[
+		 SELECT a.code2,
+			    a.name2,
+			    b.spec_code,
+			    b.spec
+		   FROM t_code2 a,
+			    t_product_spec b
+		  WHERE a.code2   = b.spec_code(+)
+		    AND b.dpid(+) = #dpid#
+		    AND a.code1   = #spec_type#
+		    AND a.status <> 'D'
+		ORDER BY a.rank
+		]]>
+	</select>
+	
+	<select id="getImageList" resultClass="Param" parameterClass="Param" cacheModel="imageList">
+		<![CDATA[	
+            SELECT dpid, image_code, seq, image_path, image_name, regist_date, 
+            			TO_CHAR(START_DATE,'yyyy.MM.dd') start_date, 
+            			TO_CHAR(end_DATE,'yyyy.MM.dd') end_date 
+            	FROM T_PRODUCT_IMAGE
+            WHERE dpid=#dpid#
+            AND seq >= 1            
+            AND image_code = #image_code#
+            AND (START_DATE IS NULL OR START_DATE <= sysdate)
+            AND (end_DATE IS NULL OR end_DATE >= sysdate)
+      	]]>
+	</select>	
+	
+	<select id="getRelationList" resultClass="Param" parameterClass="Param">
+		<![CDATA[		
+		select * from
+		( 			
+				SELECT 
+				    row_number() over (order by relation.rtype, relation.ranking) rnum,
+				    pc.dpid, pc.grade_code, pc.device_type, pc.price,   
+				    pc.promotion_gift,	pc.promotion_discount, pc.promotion_online, pc.image_original, pc.image_large,
+				    pc.image_medium, pc.image_small, pc.image_thumb, pc.review_cnt, pc.review_score_avg,
+				    pc.feature_01, pc.feature_02, pc.feature_03, pc.feature_04, pc.feature_05,
+				    pc.feature_01_title,pc.feature_02_title,pc.feature_03_title,pc.feature_04_title,pc.feature_05_title,
+				    display.site_code, display.pserial, display.title_l, display.title_s, display.tag, display.default_price, display.show_grade_type,
+				    display.regist_date,  display.soldout, display.type, display.coupon_yn, relation.rel_dpid,
+				    f_active_stock(display.dpid) active_stock 
+				 FROM 
+				    t_product_cache pc, 
+				    t_product_display display,
+				    T_RELEVANT_PRODUCT relation          
+				WHERE pc.dpid = display.dpid
+				AND relation.rel_dpid = display.dpid 	          
+				AND relation.dpid = #dpid#
+				AND relation.rdate = (SELECT MAX(rdate) FROM T_RELEVANT_PRODUCT WHERE dpid = #dpid#) 
+				AND display.status ='S'		
+				AND display.list_yn = 'Y'	  
+				AND display.approval_yn = 'Y'
+				AND display.type       <> 'G'	    				
+				AND display.start_date <= SYSDATE
+				AND display.end_date >= SYSDATE 
+			]]>
+			<include refid="Common.productCache"/>			
+			<isNotEmpty property="show_grade_type">
+				<isEqual property="show_grade_type" compareValue="Y">
+				AND display.show_grade_type	in ('A', 'E')
+				</isEqual>	
+				<isNotEqual property="show_grade_type" compareValue="Y">
+				AND display.show_grade_type	in ('A', 'S')
+				</isNotEqual>
+			</isNotEmpty>		
+ 	    <![CDATA[   
+			) 	    
+		  WHERE rnum <= #POS_END#
+		    AND rnum > #POS_STA#	
+		]]>					
+	</select>
+	
+	<select id="getOptionProdList" resultClass="Param" parameterClass="Param" cacheModel="optionList">
+		<![CDATA[
+			SELECT 
+				row_number() over (order by opt_prd.rank asc) rnum,
+			    pc.dpid, pc.grade_code, pc.device_type, pc.price,   
+			    pc.promotion_gift,	pc.promotion_discount, pc.promotion_online, pc.image_original, pc.image_large,
+				pc.image_medium, pc.image_small, pc.image_thumb, pc.review_cnt, pc.review_score_avg,
+				pc.feature_01, pc.feature_02, pc.feature_03, pc.feature_04, pc.feature_05,
+				pc.feature_01_title,pc.feature_02_title,pc.feature_03_title,pc.feature_04_title,pc.feature_05_title,				  
+			    display.site_code, display.pserial, display.title_l, display.title_s, display.tag, 
+			    display.default_price, display.show_grade_type,
+			    display.regist_date, display.soldout, display.type, display.coupon_yn,
+			    opt_prd.opt_dpid, opt_prd.title opt_title, 
+				f_active_stock(display.dpid) active_stock
+			 FROM 
+				t_product_cache pc, 
+			    t_product_display display,
+				t_product_option opt_prd        
+			WHERE pc.dpid = display.dpid
+			AND opt_prd.opt_dpid = display.dpid 	          
+            AND opt_prd.dpid = #dpid#
+			AND display.status ='S'		
+			AND display.approval_yn = 'Y'
+			AND display.type       <> 'G'	    			
+		    AND display.start_date <= SYSDATE
+		    AND display.end_date >= SYSDATE 
+		]]>
+		<include refid="Common.productCache"/>
+		<isNotEmpty property="list_yn">
+			AND display.list_yn = #list_yn#	  		
+		</isNotEmpty>					
+		<isNotEmpty property="show_grade_type">
+			<isEqual property="show_grade_type" compareValue="Y">
+			AND display.show_grade_type	in ('A', 'E')
+			</isEqual>	
+			<isNotEqual property="show_grade_type" compareValue="Y">
+			AND display.show_grade_type	in ('A', 'S')
+			</isNotEqual>
+		</isNotEmpty>					
+	</select>	
+	
+	<select id="getEtcImageProdList" resultClass="Param" parameterClass="Param" >
+		<![CDATA[	
+		SELECT * FROM (
+	       SELECT
+	           	row_number() over (order by opt_prd.rank asc) rnum,
+	           	image.dpid, image.image_path, color_image, color_title, texture_image, reaction_image 
+	       FROM 
+		       T_PRODUCT_ETC_IMAGE image,
+		       T_PRODUCT_OPTION opt_prd
+	       WHERE opt_prd.opt_dpid = image.dpid
+	       AND opt_prd.dpid =#dpid#	       
+			) 	    
+		  WHERE 1 = 1		  	
+		]]>			 
+		<isNotEmpty property="rowCount">
+			AND rownum <![CDATA[<]]>= #rowCount# 
+		</isNotEmpty>		          
+	</select>   
+	
+	<select id="getBenefitList" resultClass="Param" parameterClass="Param">
+		 SELECT *
+		   FROM
+		    (
+		         SELECT 'gift' type,
+		            b.title
+		           FROM t_gift_apply_cate a,
+		            t_gift b,
+		            (
+		                 SELECT *
+		                   FROM t_cate
+		                    START WITH cate_seq IN
+		                    (
+		                         SELECT cate_seq FROM t_product_cate WHERE dpid = #dpid#
+		                    )
+		                    CONNECT BY PRIOR p_cate_seq = cate_seq
+		            )
+		            c,
+		            t_gift_grade e,
+		            t_gift_apply_channel f
+		          WHERE a.gift_seq = b.gift_seq
+		            AND a.cate_seq = c.cate_seq
+		            AND b.gift_seq = e.gift_seq
+		            AND b.gift_seq = f.gift_seq
+		            AND b.status   = 'S'
+		            AND b.type     = '03'
+		            AND SYSDATE BETWEEN b.START_DATE AND b.end_date
+		            AND b.device_type IN ('A', #device_type#)
+		            AND f.channel_code = #channel_code#
+		            AND e.grade_code   = #grade_code#
+		          UNION
+		         SELECT 'gift' type,
+		            b.title
+		           FROM t_gift_apply_product a,
+		            t_gift b,
+		            t_gift_grade e,
+		            t_gift_apply_channel f
+		          WHERE a.gift_seq = b.gift_seq
+		            AND b.gift_seq = e.gift_seq
+		            AND b.gift_seq = f.gift_seq
+		            AND a.ie_code  = 'I'
+		            AND b.status   = 'S'
+		            AND b.type     = '03'
+		            AND SYSDATE BETWEEN b.START_DATE AND b.end_date
+		            AND b.device_type IN ('A', #device_type#)
+		            AND a.dpid         = #dpid#
+		            AND f.channel_code = #channel_code#
+		            AND e.grade_code   = #grade_code#
+		          MINUS
+		         SELECT 'gift' type,
+		            b.title
+		           FROM t_gift_apply_product a,
+		            t_gift b,
+		            t_gift_grade e,
+		            t_gift_apply_channel f
+		          WHERE a.gift_seq = b.gift_seq
+		            AND b.gift_seq = e.gift_seq
+		            AND b.gift_seq = f.gift_seq
+		            AND a.ie_code  = 'E'
+		            AND b.status   = 'S'
+		            AND b.type     = '03'
+		            AND SYSDATE BETWEEN b.START_DATE AND b.end_date
+		            AND b.device_type IN ('A', #device_type#)
+		            AND a.dpid         = #dpid#
+		            AND f.channel_code = #channel_code#
+		            AND e.grade_code   = #grade_code#
+		          UNION
+		         SELECT 'coupon' type,
+		            b.coupon_name title
+		           FROM t_coupon_apply_cate a,
+		            t_coupon b,
+		            (
+		                 SELECT *
+		                   FROM t_cate
+		                    START WITH cate_seq IN
+		                    (
+		                         SELECT cate_seq FROM t_product_cate WHERE dpid = #dpid#
+		                    )
+		                    CONNECT BY PRIOR p_cate_seq = cate_seq
+		            )
+		            c,
+		            t_coupon_apply_grade e
+		          WHERE a.coupon_seq   = b.coupon_seq
+		            AND a.cate_seq     = c.cate_seq
+		            AND b.coupon_seq   = e.coupon_seq
+		            AND b.status       = 'S'
+		            AND b.coupon_type IN ('01', '02')
+		            AND SYSDATE BETWEEN b.START_DATE AND b.end_date
+		            AND b.device_type IN ('A', #device_type#)
+		            AND e.grade_code   = #grade_code#
+		          UNION
+		         SELECT 'coupon' type,
+		            b.coupon_name title
+		           FROM t_coupon_apply_product a,
+		            t_coupon b,
+		            t_coupon_apply_grade e
+		          WHERE a.coupon_seq   = b.coupon_seq
+		            AND b.coupon_seq   = e.coupon_seq
+		            AND b.status       = 'S'
+		            AND b.coupon_type IN ('01', '02')
+		            AND SYSDATE BETWEEN b.START_DATE AND b.end_date
+		            AND b.device_type IN ('A', #device_type#)
+		            AND a.dpid         = #dpid#
+		            AND e.grade_code   = #grade_code#
+		    )
+		ORDER BY type DESC
+	</select>
+	
+	<select id="getSetProdActiveStock" parameterClass="Param" resultClass="Integer" >
+		SELECT f_active_stock(#dpid#) active_stock 
+		  FROM dual
+	</select>	
+	
+	<select id="getBrandCommunityProdList" resultClass="Param" parameterClass="Param" >
+		<![CDATA[		
+		select * from
+		( 			
+			SELECT 
+			    row_number() over (order by display.regist_date DESC) rnum,
+			    pc.dpid, pc.grade_code, pc.device_type, pc.price,   
+			    pc.promotion_gift,	pc.promotion_discount, pc.promotion_online, pc.coupon_yn, 
+			    pc.image_original, pc.image_large,
+			    pc.image_medium, pc.image_small, pc.image_thumb, pc.review_cnt, pc.review_score_avg,
+			    pc.feature_01, pc.feature_02, pc.feature_03, pc.feature_04, pc.feature_05,
+				pc.feature_01_title,pc.feature_02_title,pc.feature_03_title,pc.feature_04_title,pc.feature_05_title,			      
+			    display.site_code, display.pserial, display.title_l, display.title_s, display.tag, display.default_price, display.show_grade_type,
+			    display.regist_date,  display.soldout, cate.cate_seq, display.type, display.coupon_yn,
+			    f_active_stock(display.dpid) active_stock 
+			 FROM 
+			    t_product_cache pc, 
+			    t_product_display display,
+			    t_product_cate cate
+			WHERE pc.dpid = cate.dpid
+			AND pc.dpid = display.dpid
+			AND display.status ='S'		
+			AND display.list_yn = 'Y'	  
+			AND display.start_date <= SYSDATE
+			AND display.end_date >= SYSDATE 
+			AND display.device_type = 'A' 
+			AND display.show_grade_type = 'A'
+			AND display.approval_yn = 'Y'
+			AND display.type       <> 'G'	    						
+		    AND cate.cate_seq  IN
+			    (
+			         SELECT cate_seq
+			           FROM t_cate
+			          WHERE site_code             = #site_code#
+			            AND status                = 'S'
+			            START WITH cate_seq       = #cate_seq#
+			            CONNECT BY prior cate_seq = p_cate_seq
+			    )		
+			]]>
+			<isNotEmpty property="searchQuery">
+			    AND
+			    (
+			        display.title_s LIKE '%' || TRIM(#searchQuery#) || '%'
+			        OR display.title_l LIKE '%' || TRIM(#searchQuery#) || '%'
+			        OR display.summary LIKE '%' || TRIM(#searchQuery#) || '%'
+			        OR display.tag LIKE '%' || TRIM(#searchQuery#) || '%'
+			    )
+			</isNotEmpty>			
+			<include refid="Common.productCache"/>
+ 	    <![CDATA[   
+			) 	    
+		  WHERE rnum <= #POS_END#
+		    AND rnum > #POS_STA#	
+		]]>				
+	</select>	
+
+	<select id="getBrandCommunityProdListCount"  resultClass="Integer" parameterClass="Param" >
+		<![CDATA[  
+		SELECT count(*)
+		 FROM 
+		    t_product_cache pc, 
+		    t_product_display display,
+		    t_product_cate cate        
+		WHERE pc.dpid = cate.dpid
+		AND pc.dpid = display.dpid
+		AND display.status ='S'		
+		AND display.list_yn = 'Y'	  
+		AND display.approval_yn = 'Y'
+		AND display.type       <> 'G'	    		
+		AND display.start_date <= SYSDATE
+		AND display.end_date >= SYSDATE 
+		AND display.device_type = 'A' 
+		AND display.show_grade_type = 'A'
+	    AND cate.cate_seq  IN
+		    (
+		         SELECT cate_seq
+		           FROM t_cate
+		          WHERE site_code             = #site_code#
+		            AND status                = 'S'
+		            START WITH cate_seq       = #cate_seq#
+		            CONNECT BY prior cate_seq = p_cate_seq
+		    )		
+		]]>
+		<isNotEmpty property="searchQuery">
+		    AND
+		    (
+		        display.title_s LIKE '%' || TRIM(#searchQuery#) || '%'
+		        OR display.title_l LIKE '%' || TRIM(#searchQuery#) || '%'
+		        OR display.summary LIKE '%' || TRIM(#searchQuery#) || '%'
+		        OR display.tag LIKE '%' || TRIM(#searchQuery#) || '%'
+		    )
+		</isNotEmpty>						
+		<include refid="Common.productCache"/>
+	</select>	
+	
+	<select id="getGiftListIn" resultClass="Param" parameterClass="Long">
+         SELECT gift.dpid,
+	            gift.gift_dpid,
+	            dp.title_s,
+	            f_product_image(gift.gift_dpid, '01') image,
+	            gift.qty * cart.qty qty
+           FROM t_cart cart,
+	            t_product_gift gift,
+	            t_product_display dp
+          WHERE cart.dpid      = gift.dpid
+            AND gift.gift_dpid = dp.dpid
+            AND dp.status      = 'S'
+            AND cart.cart_seq  = #value#
+            AND cart.order_yn  = 'Y'
+	</select>
+	
+	<select id="getPreFerenceList" resultClass="Param" parameterClass="Param">
+		SELECT row_number() over (order by code.rank asc) rnum,
+			 	code.code2, code.name2 title, PREFERENCE.top_rank, PREFERENCE.rate
+		FROM T_CODE2 code, T_PRODUCT_PREFERENCE PREFERENCE
+		WHERE code.code1= #code1#
+		AND code.code2 = PREFERENCE.CODE2(+)
+		AND PREFERENCE.TYPE(+)= #type#
+		AND PREFERENCE.dpid(+) =#dpid#	
+	</select>
+	
+	<select id="getSetList" resultClass="Param" parameterClass="String">
+		 SELECT a.set_dpid,
+			    a.qty,
+			    b.title_l,
+			    b.title_s,
+			    b.default_price,
+			    b.pserial,
+			    f_active_stock(b.dpid) active_stock
+		   FROM t_product_set a,
+			    t_product_display b
+		  WHERE a.set_dpid = b.dpid
+		    AND a.dpid     = #value#
+	</select>
+	
+	<sql id="ProductCache.getQuickOrderProdListParam">
+		<![CDATA[       	
+		AND display.site_code = #site_code#
+		AND quick.mem_id = #mem_id#		
+	    AND display.start_date <= SYSDATE
+	    AND display.end_date >= SYSDATE	
+		AND display.status ='S'		
+		AND display.approval_yn = 'Y'
+		AND display.type       <> 'G'	    			
+		]]>
+		<isNotEmpty property="show_grade_type">
+			<isEqual property="show_grade_type" compareValue="Y">
+			AND display.show_grade_type	in ('A', 'E')
+			</isEqual>	
+			<isNotEqual property="show_grade_type" compareValue="Y">
+			AND display.show_grade_type	in ('A', 'S')
+			</isNotEqual>
+		</isNotEmpty>		
+	</sql>		
+	
+	<select id="getQuickOrderProdList" resultClass="Param" parameterClass="Param">
+		select * from
+		( 			
+			SELECT 
+			<isNotEmpty property="sort_type">
+				<isEqual property="sort_type" compareValue="LAST">			
+				 	row_number() over (order by quick.last_order_date DESC) rnum,
+				</isEqual>
+				<isEqual property="sort_type" compareValue="ORDER_CNT">			
+				 	row_number() over (order by quick.order_cnt DESC) rnum,
+				</isEqual>			
+				<isEqual property="sort_type" compareValue="NEW">			
+				 	row_number() over (order by display.regist_date DESC) rnum,
+				</isEqual>			
+				<isEqual property="sort_type" compareValue="HPRICE">			
+				 	row_number() over (order by pc.price desc) rnum,
+				</isEqual>			
+				<isEqual property="sort_type" compareValue="LPRICE">			
+				 	row_number() over (order by pc.price asc) rnum,
+				</isEqual>			
+			</isNotEmpty>			 	
+			<isEmpty property="sort_type">
+					row_number() over (order by quick.last_order_date DESC) rnum,
+			</isEmpty>					
+			    pc.dpid, pc.grade_code, pc.device_type, pc.price,   
+			    pc.promotion_gift,	pc.promotion_discount, pc.promotion_online, pc.coupon_yn, 
+			    pc.image_original, pc.image_large,
+				pc.image_medium, pc.image_small, pc.image_thumb, pc.review_cnt, pc.review_score_avg,
+				pc.feature_01_title,pc.feature_02_title,pc.feature_03_title,pc.feature_04_title,pc.feature_05_title,			      				
+				pc.feature_01, pc.feature_02, pc.feature_03, pc.feature_04, pc.feature_05,   pc.option_cnt,
+			    display.site_code, display.pserial, display.title_l, display.title_s, display.tag, display.default_price, display.show_grade_type,
+			    display.regist_date,  display.soldout, display.type, display.coupon_yn,               
+				f_active_stock(display.dpid) active_stock, 
+                quick.dpid wish_dpid, quick.rel_dpid, quick.order_cnt, quick.last_order_date,
+                CASE WHEN 
+                	quick.dpid != quick.rel_dpid
+                THEN 
+                	(SELECT title_s FROM T_PRODUCT_DISPLAY WHERE dpid = quick.rel_dpid) 	
+                ELSE 
+                	display.title_s
+                END AS rel_dpid_title_s, 
+                opt_prod.title opt_title
+			 FROM 
+				t_product_cache pc, 
+			    t_product_display display,
+				t_product_quick_order quick,
+				T_PRODUCT_OPTION opt_prod                    
+			WHERE pc.dpid = display.dpid
+			AND display.dpid = quick.dpid
+            AND quick.dpid = opt_prod.opt_dpid(+)
+            AND quick.rel_dpid = opt_prod.dpid(+)
+         <include refid="ProductCache.getQuickOrderProdListParam"/>
+		 <include refid="Common.productCache"/>
+		 )
+ 	    <![CDATA[   
+		  WHERE rnum <= #POS_END#
+		    AND rnum > #POS_STA#	
+		]]>		            		 
+	</select>
+	
+	<select id="getQuickOrderProdListCount" resultClass="Integer" parameterClass="Param">
+		SELECT 
+			count(*)
+		 FROM 
+			t_product_cache pc, 
+		    t_product_display display,
+			t_product_quick_order quick,
+			T_PRODUCT_OPTION opt_prod                    
+		WHERE pc.dpid = display.dpid
+		AND display.dpid = quick.dpid
+           AND quick.dpid = opt_prod.opt_dpid(+)
+           AND quick.rel_dpid = opt_prod.dpid(+)
+        <include refid="ProductCache.getQuickOrderProdListParam"/>
+	 <include refid="Common.productCache"/>
+	</select>
+</sqlMap>

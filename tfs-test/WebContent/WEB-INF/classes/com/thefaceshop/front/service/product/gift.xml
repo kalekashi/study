@@ -1,0 +1,238 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="Gift">
+	<select id="getAppointList" resultClass="Param" parameterClass="Param">
+		 SELECT m.gift_seq,
+			    m.title,
+			    m.start_date,
+			    m.end_date,
+			    TRUNC(m.cart_qty / m.appoint_qty) * select_qty select_qty,
+			    m.cart_qty,
+			    m.dpid,
+			    TRUNC(m.cart_qty / m.appoint_qty) * m.qty max_qty,
+			    m.pname,
+			    m.price,
+			    m.image,
+			    m.appoint_qty,
+			    m.select_qty select_qty2,
+			    m.active_stock,
+			    m.exclude_amt_yn
+		   FROM
+		    (
+		         SELECT a.gift_seq,
+			            a.title,
+			            TO_CHAR(a.start_date, 'yyyy-mm-dd') start_date, 
+			            TO_CHAR(a.end_date, 'yyyy-mm-dd') end_date,
+			            d.appoint_qty,
+			            d.select_qty,
+			            f_apply_qty_in_cart(a.gift_seq, #cart_seq#) cart_qty,
+			            e.dpid,
+			            e.qty,
+			            f.title_s pname,
+			            f.default_price price,
+			            f_product_image(e.dpid, '01') image,
+					    f_active_stock(f.dpid) active_stock,
+			            d.exclude_amt_yn
+		           FROM t_gift a,
+			            t_gift_apply_channel b,
+			            t_gift_grade c,
+			            t_gift_appoint d,
+			            t_gift_appoint_product e,
+			            t_product_display f
+		          WHERE a.site_code    = b.site_code
+		            AND a.gift_seq     = b.gift_seq
+		            AND a.site_code    = c.site_code
+		            AND a.gift_seq     = c.gift_seq
+		            AND a.site_code    = d.site_code
+		            AND a.gift_seq     = d.gift_seq
+		            AND d.site_code    = e.site_code
+		            AND d.gift_seq     = e.gift_seq
+		            AND e.dpid         = f.dpid
+		            AND a.status       = 'S'
+		            AND a.start_date  <![CDATA[<]]>= sysdate
+		            AND a.end_date    >= sysdate
+		            AND a.type         = '03'
+		            AND a.site_code    = #site_code#
+		            AND a.device_type IN ('A', #device_type#)
+		            AND b.channel_code = #channel_code#
+		            AND c.grade_code   = #grade_code#
+		    )
+		    m
+		  WHERE m.cart_qty >= m.appoint_qty
+		  ORDER BY m.gift_seq DESC
+	</select>
+	
+	<select id="getCartList" resultClass="Param" parameterClass="Param">
+		 SELECT m.*
+		   FROM
+		    (
+		         SELECT a.gift_seq,
+			            a.title,
+			            TO_CHAR(a.start_date, 'yyyy-mm-dd') start_date,
+			            TO_CHAR(a.end_date, 'yyyy-mm-dd') end_date,
+			            f_apply_amt_in_cart(a.gift_seq, #cart_seq#, #grade_code#, #device_type#) cart_amt,
+			            e.dpid,
+			            e.qty max_qty,
+			            f.title_s pname,
+			            f.default_price price,
+					    f_active_stock(f.dpid) active_stock, 
+			            f_product_image(e.dpid, '01') image
+		           FROM t_gift a,
+			            t_gift_apply_channel b,
+			            t_gift_grade c,
+			            t_gift_product e,
+			            t_product_display f
+		          WHERE a.site_code    = b.site_code
+		            AND a.gift_seq     = b.gift_seq
+		            AND a.site_code    = c.site_code
+		            AND a.gift_seq     = c.gift_seq
+		            AND a.site_code    = e.site_code
+		            AND a.gift_seq     = e.gift_seq
+		            AND e.price_seq    = 1
+		            AND e.dpid         = f.dpid
+		            AND a.status       = 'S'
+		            AND a.start_date  <![CDATA[<]]>= sysdate
+		            AND a.end_date    >= sysdate
+		            AND a.type         = '02'
+		            AND a.site_code    = #site_code#
+		            AND a.device_type IN ('A', #device_type#)
+		            AND b.channel_code = #channel_code#
+		            AND c.grade_code   = #grade_code#
+		    )
+		    m
+		  WHERE m.cart_amt > 0
+		ORDER BY m.gift_seq DESC
+	</select>
+	
+	<select id="getAmtList" resultClass="Param" parameterClass="Param">
+		 SELECT m.*
+		   FROM
+		    (
+		         SELECT a.gift_seq,
+			            a.title,
+			            TO_CHAR(a.start_date, 'yyyy-mm-dd') start_date,
+			            TO_CHAR(a.end_date, 'yyyy-mm-dd') end_date,
+			            f_apply_qty_in_cart(a.gift_seq, #cart_seq#) cart_qty,
+			            e.dpid,
+			            e.qty max_qty,
+			            f.title_s pname,
+			            f.default_price price,
+			            f_product_image(e.dpid, '01') image,
+					    f_active_stock(f.dpid) active_stock,
+			            d.limit_amt,
+			            d.limit_type
+		           FROM t_gift a,
+			            t_gift_apply_channel b,
+			            t_gift_grade c,
+			            t_gift_price d,
+			            t_gift_product e,
+			            t_product_display f
+		          WHERE a.site_code = b.site_code
+		            AND a.gift_seq  = b.gift_seq
+		            AND a.site_code = c.site_code
+		            AND a.gift_seq  = c.gift_seq
+		            AND a.site_code = d.site_code
+		            AND a.gift_seq  = d.gift_seq
+		            AND d.site_code = e.site_code
+		            AND d.gift_seq  = e.gift_seq
+		            AND d.price_seq =
+		            (
+		                 SELECT MAX(price_seq)
+		                   FROM t_gift_price
+		                  WHERE gift_seq = a.gift_seq
+		                    AND price   <![CDATA[<]]>=f_apply_amt_in_cart(a.gift_seq, #cart_seq#, #grade_code#, #device_type#)
+		            )
+		            AND e.dpid         = f.dpid
+		            AND e.price_seq    = d.price_seq
+		            AND a.status       = 'S'
+		            AND a.start_date  <![CDATA[<]]>= sysdate
+		            AND a.end_date    >= sysdate
+		            AND a.type         = '01'
+		            AND a.site_code    = #site_code#
+		            AND a.device_type IN ('A', #device_type#)
+		            AND b.channel_code = #channel_code#
+		            AND c.grade_code   = #grade_code#
+		    )
+		    m
+		  WHERE m.cart_qty > 0
+		ORDER BY m.gift_seq DESC
+	</select>
+	
+	<select id="getAppliedProductOf" parameterClass="Param" resultClass="Param">
+		<isNotEmpty property="cart_seq">
+		 SELECT p.gift_seq, p.dpid
+		   FROM
+		    (
+		</isNotEmpty>
+		         SELECT a.gift_seq, b.dpid
+		           FROM t_gift a,
+		            t_gift_apply_product b
+		          WHERE a.gift_seq       = b.gift_seq
+		            AND b.ie_code		 = 'I'
+				<isNotEmpty property="gift_seq_list">
+		            AND a.gift_seq      IN (
+			    	<iterate property="gift_seq_list" conjunction=",">
+			    		#gift_seq_list[]#
+			    	</iterate>
+					)
+				</isNotEmpty>
+				<isNotEmpty property="gift_seq">
+					AND a.gift_seq = #gift_seq#
+				</isNotEmpty>
+		          UNION
+		         SELECT a.gift_seq, t.dpid
+		           FROM t_gift a,
+		            t_gift_apply_cate b,
+		            (
+		                 SELECT rownum rnum,
+		                    sys_connect_by_path(x.cate_seq, '|') || '|' path,
+		                    x.*
+		                   FROM t_cate x
+		                    START WITH x.p_cate_seq     = 0
+		                    CONNECT BY prior x.cate_seq = x.p_cate_seq
+		            )
+		            pt,
+		            t_product_cate t,
+		            t_product_display dp
+		          WHERE a.gift_seq                               = b.gift_seq
+		            AND pt.cate_seq                              = t.cate_seq
+		            AND instr(pt.path, '|' || b.cate_seq || '|') > 0
+		            AND t.dpid                                   = dp.dpid
+		            AND dp.status                                = 'S'
+				<isNotEmpty property="gift_seq_list">
+		            AND a.gift_seq      IN (
+			    	<iterate property="gift_seq_list" conjunction=",">
+			    		#gift_seq_list[]#
+			    	</iterate>
+					)
+				</isNotEmpty>
+				<isNotEmpty property="gift_seq">
+					AND a.gift_seq = #gift_seq#
+				</isNotEmpty>
+		          MINUS
+		         SELECT a.gift_seq, b.dpid
+		           FROM t_gift a,
+		            t_gift_apply_product b
+		          WHERE a.gift_seq       = b.gift_seq
+		            AND b.ie_code		 = 'O'
+				<isNotEmpty property="gift_seq_list">
+		            AND a.gift_seq      IN (
+			    	<iterate property="gift_seq_list" conjunction=",">
+			    		#gift_seq_list[]#
+			    	</iterate>
+					)
+				</isNotEmpty>
+				<isNotEmpty property="gift_seq">
+					AND a.gift_seq = #gift_seq#
+				</isNotEmpty>
+		<isNotEmpty property="cart_seq">
+		    )
+		    p,
+		    t_cart cart
+		  WHERE p.dpid        = cart.dpid
+		    AND cart.cart_seq = #cart_seq#
+		    AND cart.order_yn = 'Y'
+		</isNotEmpty>
+	</select>
+</sqlMap>

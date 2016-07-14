@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="Cate">
+	<cacheModel type="LRU" id="cateDept2List">
+		<flushInterval hours="1"/>
+	</cacheModel>
+	<cacheModel type="LRU" id="cateDept3List">
+		<flushInterval hours="1"/>
+	</cacheModel>		
+	<cacheModel type="LRU" id="cateInfo">
+		<flushInterval hours="1"/>
+	</cacheModel>		
+
+		
+	<select id="getCateDept2List" resultClass="Param" parameterClass="Param" cacheModel="cateDept2List">
+		 SELECT cate_seq,
+		        cate_name,
+			    grp_seq, top_yn
+		   FROM t_cate a
+		  WHERE site_code  = #site_code#
+		    AND status     = 'S'
+		    AND p_cate_seq = #p_cate_seq#
+		ORDER BY rank
+	</select>
+	
+	<select id="getCateDept3List" resultClass="Param" parameterClass="Param" cacheModel="cateDept3List">
+		  SELECT level,
+					    a.cate_seq,
+					    a.site_code,
+                        a.grp_seq,
+					    a.p_cate_seq,
+					    a.cate_name,
+					    a.rank,
+					    a.top_yn,
+					    a.status,
+					    DECODE(a.status, 'S', '활성', 'H', '비활성', '') status_name,
+					    SYS_CONNECT_BY_PATH(a.cate_name, '>') path,
+					    a.regist_user,
+					    TO_CHAR(a.regist_date, 'yyyy.mm.dd') regist_date
+				   FROM t_cate a
+				  WHERE a.status = 'S'
+				  	AND LEVEL >  1
+					AND a.site_code = #site_code#
+		     START WITH a.cate_seq = #p_cate_seq#
+		     CONNECT BY prior a.cate_seq = a.p_cate_seq
+		 ORDER SIBLINGS BY a.rank
+	</select>	
+	
+	<select id="getCateInfo" resultClass="Param" parameterClass="Param" cacheModel="cateInfo">
+		 SELECT a.cate_seq,
+	        a.site_code,
+	        a.grp_seq,
+	        a.p_cate_seq,
+	        a.cate_name,
+	        a.rank,
+	        a.top_yn,
+	        a.status,
+	        (SELECT COUNT(*) FROM t_cate WHERE p_cate_seq = a.cate_seq and status = 'S' ) child_cnt,
+	        (SELECT cate_name FROM t_cate WHERE cate_seq = a.p_cate_seq) p_cate_name
+	   FROM t_cate a
+	  WHERE a.status	= 'S'
+	    AND a.cate_seq = #cate_seq#	
+	</select>
+</sqlMap>  

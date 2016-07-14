@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="Point">
+	<select id="getTotalPoint" parameterClass="String" resultClass="Integer">
+	 SELECT NVL(SUM(a.pss_pnt), 0) pss_pnt
+	   FROM tcom_custpntm@tcom a,
+		    tcom_agryn@tcom b,
+		    t_mem c
+	  WHERE a.n_cust_id = b.n_cust_id
+	    AND a.n_cust_id = c.n_cust_id
+	    AND a.ch_cd     = DECODE(b.com_agr_yn, 'Y', 'TFS', 'TFSO')
+	    AND c.mem_id    = #value#
+	</select>
+	
+	<select id="getChannelPoint" parameterClass="Param" resultClass="java.lang.Integer">
+		SELECT NVL(SUM(B.pss_pnt), 0) AS pss_point
+		FROM T_MEM A, TCOM_CUSTPNTM@TCOM B
+		WHERE A.n_cust_id = B.n_cust_id
+		AND A.mem_id = #mem_id#
+		AND B.ch_cd = #ch_cd#
+	</select>
+	
+	<select id="getOfflinePoint" parameterClass="String" resultClass="java.lang.Integer">
+		SELECT NVL(SUM(pss_pnt), 0) AS pss_point
+		FROM TCOM_CUSTPNTM@TCOM
+		WHERE ch_cd = 'TFSP'
+		AND n_cust_id = #value#
+	</select>
+	
+	<select id="getExpectedPoint" parameterClass="java.lang.String" resultClass="java.lang.Integer">
+		SELECT NVL(SUM(OI.GRANT_POINT), 0) GRANT_POINT
+		  FROM T_ORDER_MASTER OM, T_ORDER_SHIP OS, T_ORDER_ITEM OI
+		 WHERE OM.ORDERID = OS.ORDERID
+		   AND OS.ORDERID = OI.ORDERID
+		   AND OS.SHIP_SEQ = OI.SHIP_SEQ
+		   AND OM.MEM_ID = #mem_id#
+		   AND OS.STATUS IN ('10', '13', '15', '17', '18', '30', '53')
+		   AND OS.ORG_ORDERID IS NULL
+	</select>
+		
+	<select id="getList" parameterClass="Param" resultClass="Param">
+		SELECT *
+		  FROM (
+				SELECT ROW_NUMBER() OVER(ORDER BY A.N_CUST_ID, A.PROC_DTIME DESC) RNUM,
+					   A.*, B.CD_NM PNT_NAME
+				  FROM TCOM_CUSTPNTD@TCOM A, TCOM_CODE@TCOM B
+				 WHERE A.TFSO_PNT_PCY_CD = B.CD(+)
+				   AND B.CD_CLF_CD(+) = 'PNT_PCY_CD'
+				   AND A.N_CUST_ID = #n_cust_id#
+				   AND A.PROC_DTIME BETWEEN REPLACE(REPLACE(#start_date#, '-', ''), '.', '') || '000000000000' AND REPLACE(REPLACE(#end_date#, '-', ''), '.','') || '999999999999'
+				   AND A.PNT > 0
+		<isEqual property="type" compareValue="online">
+				   AND A.TFSP_MS_CD = 'A01554'
+		</isEqual>
+		<isEqual property="type" compareValue="offline">
+			<![CDATA[
+				   AND A.TFSP_MS_CD <> 'A01554'
+			]]>
+		</isEqual>
+		  	   )
+		<![CDATA[
+		 WHERE RNUM > #POS_STA#
+		   AND RNUM <= #POS_END#
+		]]>
+	</select>
+	
+	<select id="getListCount" parameterClass="Param" resultClass="java.lang.Integer">
+		SELECT COUNT(*)
+		  FROM TCOM_CUSTPNTD@TCOM A
+		 WHERE A.N_CUST_ID = #n_cust_id#
+		   AND A.PROC_DTIME BETWEEN REPLACE(REPLACE(#start_date#, '-', ''), '.', '') || '000000000000' AND REPLACE(REPLACE(#end_date#, '-', ''), '.','') || '999999999999'
+		   AND A.PNT > 0
+		<isEqual property="type" compareValue="online">
+		   AND A.TFSP_MS_CD = 'A01554'
+		</isEqual>
+		<isEqual property="type" compareValue="offline">
+			<![CDATA[
+		   AND A.TFSP_MS_CD <> 'A01554'
+			]]>
+		</isEqual>
+	</select>
+	
+	<select id="getComAgrYn" parameterClass="java.lang.String" resultClass="Param">
+		SELECT *
+		  FROM TCOM_AGRYN@TCOM
+		 WHERE N_CUST_ID = #n_cust_id#
+	</select>
+		
+	<update id="updateTcomCustpntm1" parameterClass="Param">
+		UPDATE TCOM_CUSTPNTM@TCOM
+		   SET PSS_PNT		= PSS_PNT - #point#,
+		   	   USE_PNT		= USE_PNT + #point#,
+		   	   SALE_AMT		= SALE_AMT + #sale_amt#,
+		   	   UPDATE_DTIME	= SYSDATE
+		 WHERE N_CUST_ID	= #n_cust_id#
+		<isEqual property="com_agr_yn" compareValue="Y">
+		   AND CH_CD		= 'TFS'
+		</isEqual>
+		<isNotEqual property="com_agr_yn" compareValue="Y">
+		   AND CH_CD		IN ('TFS', 'TFSO')
+		</isNotEqual>
+	</update>
+	
+	<update id="updateTcomCustpntm2" parameterClass="Param">
+		UPDATE TCOM_CUSTPNTM@TCOM
+		   SET PSS_PNT		= PSS_PNT + #point#,
+		   	   ACC_PNT		= ACC_PNT + #point#,
+		   	   SALE_AMT		= SALE_AMT + #sale_amt#,
+		   	   UPDATE_DTIME	= SYSDATE
+		 WHERE N_CUST_ID	= #n_cust_id#
+		<isEqual property="com_agr_yn" compareValue="Y">
+		   AND CH_CD		= 'TFS'
+		</isEqual>
+		<isNotEqual property="com_agr_yn" compareValue="Y">
+		   AND CH_CD		IN ('TFS', 'TFSO')
+		</isNotEqual>
+	</update>
+	
+	<insert id="insertTcomCustpntd" parameterClass="Param">
+		INSERT INTO TCOM_CUSTPNTD@TCOM
+			(
+				N_CUST_ID,
+				TFSP_CUST_ID,
+				PROC_DTIME,
+				PROC_FG_CD,
+				TFSO_CUST_ID,
+				TFSO_SNO,
+				SALE_AMT,
+				PNT,
+				PNT_FG_CD,
+				TFSP_SALE_DATE,
+				TFSP_MS_CD,
+				TFSO_ORD_NO,
+				TFSO_PNT_PCY_CD,
+				CREATE_ID,
+				UPDATE_ID,
+				TFSO_PRD_CD
+			)
+		VALUES
+			(
+				#n_cust_id#,
+				'-',
+				TO_CHAR(SYSDATE,'YYYYMMDDHH24MISS') || '000000',
+				#proc_fg_cd#,
+				#mem_id#,
+				(SELECT NVL(MAX(TFSO_SNO),0) + 1 FROM TCOM_CUSTPNTD@TCOM WHERE N_CUST_ID = #n_cust_id#),
+				#sale_amt#,
+				#point#,
+				'0',
+				TO_CHAR(SYSDATE,'YYYYMMDD'),
+				'A01554',
+				#orderid#,
+				#tfso_pnt_pcy_cd#,
+				#mem_id#,
+				#mem_id#,
+				#dpid#
+			)
+	</insert>
+	
+	<select id="check00020" parameterClass="Param" resultClass="Param">
+		SELECT *
+		  FROM TCOM_CUSTPNTD@TCOM
+		 WHERE N_CUST_ID = #n_cust_id#
+		   AND TFSO_ORD_NO = #orderid#
+		   AND TFSO_PRD_CD = #dpid#
+		   AND TFSO_PNT_PCY_CD = #tfso_pnt_pcy_cd#
+		   AND TFSP_MS_CD = 'A01554'
+		   AND ROWNUM = 1
+	</select>
+
+	<select id="check00026_1" parameterClass="Param" resultClass="Param">
+		SELECT *
+		  FROM TCOM_CUSTPNTD@TCOM
+		 WHERE N_CUST_ID = #n_cust_id#
+		   AND TFSO_ORD_NO IS NULL
+		   AND TFSO_PRD_CD = #dpid#
+		   AND TFSO_PNT_PCY_CD = #tfso_pnt_pcy_cd#
+		   AND TFSP_MS_CD = 'A01554'
+		   AND PNT >= 0
+		   AND ROWNUM = 1
+	</select>
+
+	<select id="check00026_2" parameterClass="Param" resultClass="java.lang.Integer">
+		SELECT COUNT(*)
+		  FROM TCOM_CUSTPNTD@TCOM
+		 WHERE N_CUST_ID = #n_cust_id#
+		   AND TFSO_ORD_NO IS NULL
+		   AND TFSO_PNT_PCY_CD = #tfso_pnt_pcy_cd#
+		   AND TFSP_MS_CD = 'A01554'
+		   AND CREATE_DTIME BETWEEN TRUNC(SYSDATE) AND SYSDATE
+		   AND PNT >= 0
+	</select>
+
+	<select id="check" parameterClass="Param" resultClass="Param">
+		SELECT *
+		  FROM TCOM_CUSTPNTD@TCOM
+		 WHERE N_CUST_ID = #n_cust_id#
+		   AND TFSO_PNT_PCY_CD = #tfso_pnt_pcy_cd#
+		   AND TFSP_MS_CD = 'A01554'
+	</select>
+	
+	<select id="checkCount" parameterClass="Param" resultClass="java.lang.Integer">
+		SELECT count(*)
+		  FROM TCOM_CUSTPNTD@TCOM
+		 WHERE N_CUST_ID = #n_cust_id#
+		   AND TFSO_PNT_PCY_CD = #tfso_pnt_pcy_cd#
+		   AND TFSP_MS_CD = 'A01554'
+	</select>	
+</sqlMap>

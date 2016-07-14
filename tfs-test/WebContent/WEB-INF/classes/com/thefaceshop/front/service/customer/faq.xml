@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+ 
+<sqlMap namespace="Faq">
+	<resultMap id="FaqInfo" class="Param">
+		<result property="seq" column="seq"></result>
+		<result property="site_code" column="site_code"></result>
+		<result property="question" column="question"></result>
+		<result property="answer" column="answer" jdbcType="CLOB" javaType="java.lang.String"></result>
+		<result property="faq_type" column="faq_type"></result>
+		<result property="faq_type_name" column="faq_type_name"></result>
+		<result property="hit" column="hit"></result>
+		<result property="status" column="status"></result>
+		<result property="status_name" column="status_name"></result>
+		<result property="regist_user" column="regist_user"></result>
+		<result property="regist_date" column="regist_date"></result>
+		<result property="main_yn" column="main_yn"></result>
+		<result property="brand_yn" column="brand_yn"></result>
+		<result property="mall_yn" column="mall_yn"></result>
+		<result property="staff_yn" column="staff_yn"></result>		
+		<result property="main_yn" column="main_yn"></result>		
+	</resultMap>
+	
+	<sql id="Faq.getListParam">
+		<isNotEmpty property="faq_type">
+					AND a.faq_type = #faq_type#
+		</isNotEmpty>
+		<isNotEmpty property="brand_yn">
+					AND a.brand_yn = #brand_yn#
+		</isNotEmpty>
+		<isNotEmpty property="mall_yn">
+					AND a.mall_yn = #mall_yn#
+		</isNotEmpty>
+		<isNotEmpty property="staff_yn">
+					AND a.staff_yn = #staff_yn#
+		</isNotEmpty>		
+		<isNotEmpty property="main_yn">
+					AND a.main_yn = #main_yn#
+		</isNotEmpty>
+		<isNotEmpty property="brandShop">
+					AND (
+						a.brand_yn = 'Y'
+					    <isEqual property="brandShop" compareValue="Y">
+					        	OR a.staff_yn = 'Y'
+					    </isEqual>
+					    <isEqual property="brandShop" compareValue="N">
+					        	OR a.mall_yn = 'Y'
+					    </isEqual>						
+						)
+		</isNotEmpty>							
+		<isNotEmpty property="keyword">
+		    <isEqual property="keytype" compareValue="01">
+		        	AND a.question like '%' || #keyword# || '%'
+		    </isEqual>
+		    <isEqual property="keytype" compareValue="02">
+		        	AND a.answer like '%' || #keyword# || '%'
+		    </isEqual>
+		    <isEqual property="keytype" compareValue="03">
+		        	AND (a.question like '%' || #keyword# || '%' or a.answer like '%' || #keyword# || '%')
+		    </isEqual>		    
+   		</isNotEmpty>	
+	</sql>    
+	
+    <select id="getList" resultMap="FaqInfo" parameterClass="Param">
+	     SELECT *
+		   FROM (
+				 SELECT
+		<isNotEmpty property="sort">
+			<isEqual property="sort" compareValue="hit">
+				        /*+index_desc(a idx_faq_hit)*/
+			</isEqual>
+		</isNotEmpty>		
+		<isEmpty property="sort">
+				        /*+index_desc(a pk_faq)*/
+		</isEmpty>
+		<![CDATA[
+					    rownum rnum,
+					    a.seq, a.site_code, a.question, a.hit,	
+					    a.answer, a.faq_type, 
+					    (select name2 from t_code2 where code1 = '13' and code2 = a.faq_type) faq_type_name,
+					    a.status, decode(a.status, 'S', '활성', 'H', '비활성', 'D', '삭제') status_name,
+					    a.regist_user, TO_CHAR(a.regist_date, 'yyyy.mm.dd') regist_date,
+					    a.brand_yn, a.mall_yn, staff_yn, main_yn
+				   FROM t_faq a
+				  WHERE a.site_code = #site_code#
+				    AND a.status = 'S'
+		]]>
+		<include refid="Faq.getListParam"/>
+		<![CDATA[
+			        AND rownum <= #POS_END#
+		    )
+		  WHERE rnum > #POS_STA#
+		]]>
+  	</select>
+  	
+	<select id="getListCount" parameterClass="Param" resultClass="Integer">
+		<![CDATA[
+		 SELECT count(*)
+		   FROM t_faq a
+		  WHERE a.site_code = #site_code#
+		    AND a.status = 'S'
+		]]>
+		<include refid="Faq.getListParam"/>
+	</select>
+
+	<select id="getInfo" resultMap="FaqInfo" parameterClass="Param">
+		 SELECT a.seq,
+		        a.site_code,
+			    a.question,
+			    a.answer,
+			    a.faq_type,
+			    (select name2 from t_code2 where code1 = '13' and code2 = a.faq_type) faq_type_name,
+			    a.hit,
+			    a.status,
+			    DECODE(a.status, 'S', '활성', 'H', '비활성', 'D', '삭제') status_name,
+			    a.regist_user,
+			    TO_CHAR(a.regist_date, 'yyyy.mm.dd') regist_date,
+				a.brand_yn, a.mall_yn, staff_yn, main_yn
+		   FROM t_faq a
+		  WHERE a.site_code = #site_code#
+		    AND a.status = 'S'
+		    AND a.seq = #seq#
+	</select>
+	
+	<update id="increaseHit" parameterClass="Param">
+		UPDATE t_faq
+		SET    hit    = hit + 1
+		WHERE  seq    = #seq#
+	</update>
+</sqlMap>

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="OrderReturnRequest">
+	<insert id="insert" parameterClass="Param">
+		 INSERT
+		   INTO t_order_return_request
+		    (
+		        orderid,
+		        ship_seq,
+		        type,
+		        return_reason_code,
+		        return_reason,
+		        regist_date
+		    )
+		    VALUES
+		    (
+		        #orderid#,
+		        #ship_seq#,
+		        #type#,
+		        #return_reason_code#,
+		        #return_reason#,
+		        SYSDATE
+		    )
+	</insert>
+	
+	<insert id="insertBank" parameterClass="Param">
+		 INSERT
+		   INTO t_order_return_request_bank 
+		    (
+		        orderid,
+		        lgd_rfbankcode,
+		        lgd_rfaccountnum,
+		        lgd_rfcustomername,
+		        lgd_rfphone,
+		        regist_date
+		    )
+		    VALUES
+		    (
+		        #orderid#,
+		        #lgd_rfbankcode#,
+		        #lgd_rfaccountnum#,
+		        #lgd_rfcustomername#,
+		        #lgd_rfphone#,
+		        SYSDATE
+		    )
+	</insert>
+</sqlMap>

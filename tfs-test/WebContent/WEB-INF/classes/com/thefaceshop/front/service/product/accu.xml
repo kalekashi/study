@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="Accu">
+	<select id="getAccuInfo" parameterClass="Param" resultClass="Param">
+		SELECT site_code, accu_seq, image, image_mobile,
+			TO_CHAR(start_date, 'YYYYMMDD') AS start_date, TO_CHAR(end_date, 'YYYYMMDD') AS end_date
+		FROM T_ACCU
+		WHERE site_code = #site_code#
+		AND TO_CHAR(SYSDATE, 'YYYYMMDD') BETWEEN TO_CHAR(start_date, 'YYYYMMDD') AND TO_CHAR(end_date, 'YYYYMMDD')
+	</select>
+	
+	<select id="getGiftList" parameterClass="Param" resultClass="Param" >
+		SELECT A.dpid, B.title_s, B.title_l, B.pserial,
+			B.default_price, C.image_path, C.image_name
+		FROM T_ACCU_GIFT A, T_PRODUCT_DISPLAY B, T_PRODUCT_IMAGE C
+		WHERE A.dpid = B.dpid
+		AND A.dpid = C.dpid(+)
+		AND B.status = 'S'
+		AND C.image_code(+) = '01'
+		AND A.site_code = #site_code#
+		AND A.accu_seq = #accu_seq#
+		ORDER BY B.default_price DESC
+	</select>
+	
+	<resultMap id="giftMap" class="Param">
+		<result property="dpid" column="dpid"></result>
+		<result property="default_price" column="default_price"></result>
+		<result property="pserial" column="pserial"></result>
+		<result property="contents" column="contents" jdbcType="CLOB" javaType="java.lang.String"></result>
+	</resultMap>
+	
+	<select id="getGiftInfo" parameterClass="Param" resultMap="giftMap">
+		SELECT dpid, default_price, pserial, contents
+		FROM T_PRODUCT_DISPLAY
+		WHERE status = 'S'
+		AND site_code = #site_code#
+		AND dpid = #dpid#
+	</select>
+	
+	<select id="getUserTotalAmt" parameterClass="Param" resultClass="java.lang.Integer">
+		SELECT NVL(SUM(A.amt), 0) AS amt
+		FROM T_ORDER_MASTER A, T_ORDER_SHIP B
+		WHERE A.orderid = B.orderid
+		AND B.status IN ('17', '18', '53', '60')
+		AND TO_CHAR(B.update_date, 'YYYYMMDD') BETWEEN #start_date# AND #end_date#
+		AND A.site_code = #site_code#
+		AND A.mem_id = #mem_id#
+	</select>
+	
+	<select id="getUserAccuAmt" parameterClass="Param" resultClass="java.lang.Integer">
+		<![CDATA[
+			SELECT NVL(SUM(A.price), 0) AS price
+			FROM T_ORDER_ACCU A, T_ORDER_SHIP B
+			WHERE A.orderid = B.orderid
+			AND B.status <> '19'
+			AND TO_CHAR(B.update_date, 'YYYYMMDD') BETWEEN #start_date# AND #end_date#
+			AND A.mem_id = #mem_id#
+		]]>
+	</select>
+	
+	<select id="getUserOrderCompleteList" parameterClass="Param" resultClass="Param">
+		<![CDATA[
+			SELECT *
+			FROM (
+				SELECT ROW_NUMBER() OVER(ORDER BY A.orderid DESC) RNUM, 
+					A.orderid, DECODE(A.pay_type, '98', NVL(C.price, 0), A.amt) AS price,
+					A.pay_type, TO_CHAR(A.order_date, 'YYYY.MM.DD') AS order_date
+				FROM T_ORDER_MASTER A, T_ORDER_SHIP B, T_ORDER_ACCU C
+				WHERE A.orderid = B.orderid
+				AND A.orderid = C.orderid(+)
+				AND B.status IN ('17', '18', '53', '60')
+				AND TO_CHAR(B.update_date, 'YYYYMMDD') BETWEEN #start_date# AND #end_date#
+				AND A.site_code = #site_code#
+				AND A.mem_id = #mem_id#
+			)
+			WHERE RNUM > #POS_STA#
+			AND RNUM <= #POS_END#
+		]]>
+	</select>
+	
+	<select id="getUserOrderCompleteListCount" parameterClass="Param" resultClass="java.lang.Integer">
+		SELECT COUNT(*)
+		FROM T_ORDER_MASTER A, T_ORDER_SHIP B, T_ORDER_ACCU C
+		WHERE A.orderid = B.orderid
+		AND A.orderid = C.orderid(+)
+		AND B.status IN ('17', '18', '53', '60')
+		AND TO_CHAR(B.update_date, 'YYYYMMDD') BETWEEN #start_date# AND #end_date#
+		AND A.site_code = #site_code#
+		AND A.mem_id = #mem_id#
+	</select>
+	
+	<insert id="insertOrderAccu" parameterClass="Param">
+		INSERT INTO T_ORDER_ACCU(
+			orderid, item_seq, mem_id, dpid, price, qty)
+		VALUES(
+			#orderid#, #item_seq#, #mem_id#, #dpid#, #price#, #qty#)	
+	</insert>
+</sqlMap>

@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="LimitProduct">
+	<select id="getOrderableLimitCountInfo" parameterClass="Param" resultClass="Param">
+	 SELECT p.seq,
+	    p.limit_cnt,
+	    p.limit_all_cnt,
+	    (
+	         SELECT SUM(qty)
+	           FROM t_order_master o,
+	            t_order_ship ship,
+	            t_order_item item
+	          WHERE o.orderid     = ship.orderid
+	            AND ship.orderid  = item.orderid
+                AND ship.ship_seq = 1	            
+	            AND ship.ship_seq = item.ship_seq
+	            AND ship.status  IN ('09', '10', '13', '15', '17', '18', '53', '30', '60') 
+	            AND item.sub_dpid     = p.dpid
+	            AND o.order_date >= p.start_date
+	            AND o.order_date <![CDATA[<]]>= p.end_date
+	            AND o.mem_id  = #mem_id#
+	    )
+	    order_cnt,
+	    (
+	         SELECT /*+ index(o, idx_order_master_odate) use_nl(o, ship, item) ordered*/ SUM(qty)
+	           FROM t_order_master o,
+	            t_order_ship ship,
+	            t_order_item item
+	          WHERE o.orderid     = ship.orderid
+                AND ship.ship_seq = 1	            
+	            AND ship.orderid  = item.orderid
+	            AND ship.ship_seq = item.ship_seq
+	            AND ship.status  IN ('09', '10', '13', '15', '17', '18', '53', '30', '60')
+	            AND item.sub_dpid     = p.dpid
+	            AND o.order_date >= p.start_date
+	            AND o.order_date <![CDATA[<]]>= p.end_date
+	    )
+	    order_all_cnt 
+	   FROM
+	    (
+	         SELECT
+	            /*+index_desc(a, pk_limit_product) ordered use_nl(a, b)*/
+	            a.seq,
+	            a.limit_cnt,
+	            a.limit_all_cnt,
+	            a.start_date,
+	            a.end_date,
+	            b.dpid
+	           FROM t_limit_product a,
+	            t_limit_product_apply_product b
+	          WHERE a.seq         = b.limit_seq
+	            AND a.status      = 'S'
+	            AND a.start_date <![CDATA[<]]>= sysdate
+	            AND a.end_date   >=sysdate
+	            AND a.site_code   = #site_code#
+	            AND b.dpid        = #dpid#
+	            AND rownum        = 1
+	    )
+	    p
+	</select>
+</sqlMap>

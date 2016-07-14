@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="Answer"> 
+	<resultMap id="List" class="Param">
+		<result property="question_seq" column="question_seq"></result>
+		<result property="answer_seq" column="answer_seq"></result>
+		<result property="answer" column="answer" jdbcType="CLOB" javaType="java.lang.String"></result>
+		<result property="mem_id" column="mem_id"></result>
+		<result property="adminid" column="adminid"></result>
+		<result property="regist_date" column="regist_date"></result>
+		<result property="board_cd" column="board_cd"></result>
+	</resultMap>
+    <sql id="Answer.paramQuery"> 
+		<isNotEmpty property="mem_id">
+					AND a.mem_id = #mem_id#
+		</isNotEmpty>		 		
+	    <isNotEmpty property="answer">
+		        	AND a.answer like '%' || #answer# || '%'
+	    </isNotEmpty>
+    </sql>
+	<select id="getList" resultMap="List" parameterClass="Param">
+		<![CDATA[
+	     SELECT *
+		   FROM (
+				 SELECT /*+index_desc(a pk_answer)*/
+					    rownum rnum,
+					    a.question_seq,
+					    a.answer_seq,
+					    a.answer, 
+					    a.status, 
+					    a.mem_id,
+					    a.adminid,
+					    TO_CHAR(a.regist_date, 'yyyy.mm.dd') regist_date,
+					    board_cd
+				   FROM t_answer a
+				  WHERE a.answer_seq > 0
+				    AND a.status	= 'S'
+				    AND a.question_seq = #question_seq#
+					AND a.board_cd = #board_cd#
+		]]>
+		<include refid="Answer.paramQuery"/>		
+		<![CDATA[
+			        AND rownum <= #POS_END#
+		    )
+		  WHERE rnum > #POS_STA#
+		]]>
+  	</select>
+
+	<select id="getListCount" parameterClass="Param" resultClass="Integer">
+		<![CDATA[
+		 SELECT COUNT(*)
+		   FROM t_answer a
+		  WHERE a.answer_seq > 0
+		  and a.status = 'S'
+		  AND a.question_seq = #question_seq#
+		  AND a.board_cd = #board_cd#		  
+		]]>
+		<include refid="Answer.paramQuery"/>
+	</select>
+
+	<insert id="insert" parameterClass="Param">
+		 INSERT
+		   INTO t_answer
+		    (
+		        question_seq,
+		        board_cd,
+		        answer_seq,
+		        answer,
+		        status,
+		        mem_id,
+		        regist_date
+		    )
+		    VALUES
+		    (
+		        #question_seq#,
+		        #board_cd#,
+		        seq_answer.NEXTVAL,
+		        #answer#,
+		        'S',
+		        #mem_id#,
+		        SYSDATE
+		    )
+	</insert>
+
+	<update id="delete" parameterClass="Param">
+		UPDATE t_answer
+		   SET status       = 'D'
+		 WHERE answer_seq   = #answer_seq#
+		   AND mem_id   = #mem_id#
+	</update>
+</sqlMap>

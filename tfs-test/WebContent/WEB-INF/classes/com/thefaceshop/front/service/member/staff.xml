@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="Staff">
+	<select id="getGroupList" parameterClass="Param" resultClass="Param">
+		<![CDATA[
+			SELECT corp_group, name, remark, status, regdate, rank
+			FROM T_CORP_GROUP
+			WHERE status <= #status#
+			ORDER BY rank
+		]]>
+	</select>
+
+	<select id="getCompanyList" parameterClass="Param" resultClass="Param">
+		SELECT corp_group, corp_company, name, remark, status, regdate, domain
+		FROM T_CORP_COMPANY
+		WHERE corp_group = #corp_group#
+		AND status = #status#
+		<isEqual property="confirm_type" compareValue="1">
+		AND cic_yn = 'Y'
+		</isEqual>
+		ORDER BY name
+	</select>
+	
+	<select id="getCompanyDomain" parameterClass="Param" resultClass="Param">
+		<![CDATA[
+			SELECT A.corp_group, A.corp_company, A.name, A.remark, A.status,
+				A.regdate, A.domain, A.cic_yn
+			FROM T_CORP_COMPANY A, T_CORP_GROUP B
+			WHERE A.corp_group = B.corp_group
+			AND A.corp_group = #corp_group#
+			AND A.status <= '1'
+			AND A.corp_company = #corp_company#
+		]]>
+	</select>
+	
+	<select id="getMemStaffInfo" parameterClass="Param" resultClass="Param">
+		SELECT A.mem_id, A.mem_nm, B.corp_group, B.corp_company, TO_CHAR(ADD_MONTHS(auth_date, 6), 'YYYYMMDD') AS reauth_date
+		FROM T_MEM A, T_MEM_STAFF B
+		WHERE A.mem_id = B.mem_id
+		AND A.status = '00001'
+		AND A.mem_id = #mem_id#
+	</select>
+	
+	<select id="checkMemStaff" parameterClass="Param" resultClass="Param">
+		SELECT mem_id, mem_nm, corp_group, corp_company, corp_no, email, amts_emp_id
+		FROM T_MEM_STAFF
+		WHERE corp_group = #corp_group#
+		AND corp_company = #corp_company#
+		<isEqual property="confirm_type" compareValue="1">
+		AND mem_nm = #mem_nm#
+		AND corp_no = #corp_no#
+		AND email = #email#
+		</isEqual>
+		<isEqual property="confirm_type" compareValue="2">
+		AND email = #email#
+		</isEqual>
+		<isEqual property="confirm_type" compareValue="3">
+		AND mem_nm = #mem_nm#
+		AND amts_emp_id = #emp_id#
+		</isEqual>
+	</select>
+	
+	<insert id="insertMemStaff" parameterClass="Param">
+		INSERT INTO T_MEM_STAFF(
+			mem_id, mem_nm, confirm_type, corp_group, corp_company, corp_no,
+			amts_emp_id, mobile, email, auth_date, regdate)
+		VALUES(
+			#mem_id#, #mem_nm#, #confirm_type#, #corp_group#, #corp_company#, #corp_no#,
+			#amts_emp_id#, #mobile#, #email#, SYSDATE, SYSDATE)
+	</insert>
+	
+	<update id="updateMemStaff" parameterClass="Param">
+		UPDATE T_MEM_STAFF
+		SET auth_date = SYSDATE,
+		<isEqual property="confirm_type" compareValue="1">
+			corp_no = #corp_no#,
+			email = #email#
+		</isEqual>
+		<isEqual property="confirm_type" compareValue="2">
+			email = #email#
+		</isEqual>
+		<isEqual property="confirm_type" compareValue="3">
+			amts_emp_id = #emp_id#,
+			mobile = #mobile#
+		</isEqual>
+		WHERE mem_id = #mem_id#
+	</update>
+	
+	<select id="getMemStaffConfirm" parameterClass="Param" resultClass="Param">
+		SELECT mem_nm, grade_code, email, corp_group, corp_company, confirm_yn
+		FROM T_MEM_STAFF_CONFIRM
+		WHERE authkey = #authkey#
+	</select>
+	
+	<insert id="insertMemStaffConfirm" parameterClass="Param">
+		INSERT INTO T_MEM_STAFF_CONFIRM(
+			authkey, mem_nm, grade_code, email, corp_group, corp_company, confirm_yn, regdate)
+		VALUES(
+			#authkey#, #mem_nm#, #grade_code#, #email#, #corp_group#, #corp_company#, 'N', SYSDATE)
+	</insert>
+	
+	<update id="updateMemStaffConfirm" parameterClass="Param">
+		UPDATE T_MEM_STAFF_CONFIRM
+		SET confirm_yn = 'Y'
+		WHERE authkey = #authkey#
+	</update>
+	
+	<update id="mergeMemMore" parameterClass="Param">
+		MERGE INTO T_MEM_MORE
+		USING DUAL
+			ON(
+				site_code = #site_code#
+				AND mem_id = #mem_id#
+			)
+		WHEN MATCHED THEN
+			UPDATE
+			SET employee_yn = 'Y'
+		WHEN NOT MATCHED THEN
+			INSERT(
+				site_code, mem_id, name, grade_code, employee_yn)
+			VALUES(
+				#site_code#, #mem_id#, #name#, #grade_code#, 'Y')
+	</update>
+	
+	<select id="getAMTSStaffList" parameterClass="Param" resultClass="Param">
+		SELECT A.mem_id, B.corp_group, B.corp_company, B.amts_emp_id
+		FROM T_MEM A, T_MEM_STAFF B
+		WHERE A.mem_id = B.mem_id
+		AND A.status = '00001'
+		AND B.confirm_type = '3'
+		ORDER BY REGDATE ASC
+	</select>
+	
+	<update id="updateDropMemMore" parameterClass="Param">
+		UPDATE T_MEM_STAFF
+		SET employee_yn = 'N'
+		WHERE mem_id = #mem_id#
+	</update>
+	
+	<delete id="deleteMemStaff" parameterClass="Param">
+		DELETE FROM T_MEM_STAFF
+		WHERE mem_id = #mem_id#
+	</delete>
+</sqlMap>

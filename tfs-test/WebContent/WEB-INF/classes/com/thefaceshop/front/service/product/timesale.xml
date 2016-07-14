@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="TimeSale">
+	<cacheModel type="LRU" id="timesaleInfo">
+		<flushInterval seconds="1"/>
+	</cacheModel>
+
+	<cacheModel type="LRU" id="timesaleList">
+		<flushInterval seconds="1"/>
+	</cacheModel>
+
+	<select id="getInfo" parameterClass="Param" resultClass="Param" cacheModel="timesaleInfo"> 
+		SELECT tsale.timesale_seq, 
+		       tsale.site_code, 
+		       tsale.title, 
+		       tsale.dpid, 
+		       tsale.banner_img_list, 
+		       tsale.banner_img_pc, 
+		       tsale.banner_img_mobile, 
+		       to_char(tsale.start_date,'yyyy.mm.dd hh24:mi:ss') start_date, 
+		       to_char(tsale.end_date,'yyyy.mm.dd hh24:mi:ss') end_date, 
+		       tsale.remark,
+		       to_char(tsale.end_date, 'yyyy') end_year,
+		       to_char(tsale.end_date, 'mm') end_month,
+		       to_char(tsale.end_date, 'dd') end_day,
+		       to_char(tsale.end_date, 'hh24') end_hour,
+		       to_char(tsale.end_date, 'mi') end_minute,
+		       to_char(tsale.end_date, 'ss') end_second		       
+		  FROM T_TIME_SALE tsale
+		 WHERE status = 'S' 
+		       AND site_code = #site_code# 
+		       AND dpid =#dpid#
+		       AND START_DATE <![CDATA[<]]>= SYSDATE 
+		       AND end_date >= SYSDATE  
+	</select>
+	
+	<select id="getList" parameterClass="Param" resultClass="Param" cacheModel="timesaleList">
+		<![CDATA[	
+			SELECT 
+				row_number() over (order by tsale.TIMESALE_SEQ desc) rnum,
+			    pc.dpid, pc.grade_code, pc.device_type, pc.price,   
+			    pc.promotion_gift,	pc.promotion_discount, pc.promotion_online, pc.image_original, pc.image_large,
+			    display.site_code, display.pserial, display.title_l, display.title_s, display.tag, 
+			    display.default_price, display.show_grade_type, display.coupon_yn,
+			    display.regist_date, display.soldout,
+				stock.active_stock,
+				tsale.timesale_seq, tsale.title, tsale.banner_img_list, tsale.banner_img_pc, tsale.banner_img_mobile,
+				DECODE (pc.device_type, 'P',  tsale.banner_img_pc, tsale.banner_img_mobile) banner_img,
+		        to_char(tsale.start_date,'yyyy.mm.dd hh24:mi:ss') start_date, 
+		        to_char(tsale.end_date,'yyyy.mm.dd hh24:mi:ss') end_date, 
+		        tsale.remark,
+		        to_char(tsale.end_date, 'yyyy') end_year,
+		        to_char(tsale.end_date, 'mm') end_month,
+		        to_char(tsale.end_date, 'dd') end_day,
+		        to_char(tsale.end_date, 'hh24') end_hour,
+		        to_char(tsale.end_date, 'mi') end_minute,
+		        to_char(tsale.end_date, 'ss') end_second		                   
+			 FROM 
+				t_product_cache pc, 
+			    t_product_display display,
+				t_wms_stock stock,
+				T_TIME_SALE tsale        
+			WHERE pc.dpid = display.dpid
+			AND display.pserial = stock.pserial(+)
+			AND tsale.dpid = display.dpid 	          
+			AND display.status ='S'		
+		    AND display.start_date <= SYSDATE
+		    AND display.end_date >= SYSDATE     
+ 			AND tsale.status = 'S' 
+           	AND tsale.site_code =#site_code#
+           	AND tsale.TIMESALE_SEQ > 0 
+           	AND tsale.START_DATE <= SYSDATE 
+           	AND tsale.end_date >= SYSDATE   
+       	]]>   
+			<include refid="Common.productCache"/>                			
+	</select>
+</sqlMap>

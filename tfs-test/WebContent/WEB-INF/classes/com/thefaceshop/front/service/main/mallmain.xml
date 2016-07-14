@@ -1,0 +1,491 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="MallMain">
+	<cacheModel type="LRU" id="searchTypeList">
+		<flushInterval minutes="30"/>
+	</cacheModel>
+	
+	<cacheModel type="LRU" id="bannerList">
+		<flushInterval minutes="5"/>
+	</cacheModel>	
+	
+	<cacheModel type="LRU" id="editBannerList">
+		<flushInterval minutes="5"/>
+	</cacheModel>
+	
+	<cacheModel type="LRU" id="cateDept2List">
+		<flushInterval minutes="30"/>
+	</cacheModel>
+	
+	<cacheModel type="LRU" id="hotDealList">
+		<flushInterval minutes="30"/>
+	</cacheModel>
+	
+	<cacheModel type="LRU" id="noticeList">
+		<flushInterval minutes="30"/>
+	</cacheModel>
+	
+	<cacheModel type="LRU" id="photoReviewList">
+		<flushInterval minutes="30"/>
+	</cacheModel>	
+	
+	<cacheModel type="LRU" id="bestProdList">
+		<flushInterval minutes="30"/>
+	</cacheModel>
+
+	<cacheModel type="LRU" id="mobileHotProductList">
+		<flushInterval minutes="30"/>
+	</cacheModel>
+	
+	<cacheModel type="LRU" id="mobileHotProductListCount">
+		<flushInterval minutes="30"/>
+	</cacheModel>
+	
+	<cacheModel type="LRU" id="indexInfo">
+		<flushInterval minutes="1"/>
+	</cacheModel>	
+
+	<select id="getSearchMyProductFeatureList" resultClass="Param" parameterClass="Param" cacheModel="searchTypeList">
+ 		SELECT DISTINCT d.name1, e.name2, b.code1, b.code2, e.rank 
+		 FROM T_PRODUCT_DISPLAY a, t_product_feature b , T_PRODUCT_CATE C , T_CODE1 d, T_CODE2 e
+		 WHERE a.dpid = b.dpid
+		 AND A.DPID = C.DPID
+		 AND a.status ='S'
+		 AND d.status ='S'
+		 AND e.status ='S'
+		 AND a.list_yn = 'Y'
+		 AND a.start_date <![CDATA[<]]>= SYSDATE
+		 AND a.end_date >= SYSDATE		
+		 AND a.approval_yn = 'Y'
+		 AND a.type       <![CDATA[<]]>> 'G'	    		 	 
+		 AND c.cate_seq  IN 
+		 ( 	SELECT 
+                      a.cate_seq
+                 FROM t_cate a
+                WHERE a.status = 'S'
+                  AND a.site_code = #site_code#
+                  AND a.CATE_SEQ > 0 
+		<isNotEmpty property="searchCateSeqList">  
+			<iterate prepend="AND " property="searchCateSeqList" conjunction="," open=" a.cate_seq IN (" close=")" >
+					#searchCateSeqList[]# 
+			</iterate>									
+		</isNotEmpty>
+           START WITH a.cate_seq = #search_p_cate_seq#
+           CONNECT BY prior a.cate_seq = a.p_cate_seq
+		  )
+		 AND b.code1 = d.code1
+		 AND b.code1 = e.code1
+		 AND b.code2 = e.code2
+		<isNotEmpty property="searchType">
+			<isEqual property="searchType" compareValue="type">
+			AND b.code1 in ( '71', '72')
+			</isEqual>	
+			<isEqual property="searchType" compareValue="trouble">
+			AND b.code1 in ( '73', '76')
+			</isEqual>
+		</isNotEmpty>			 
+		 ORDER BY b.code1 , E.RANK	
+	</select>
+	
+	<select id="getBannerList" resultClass="Param" parameterClass="Param" cacheModel="bannerList">
+        SELECT  row_number() over (order by banner.rank asc) rnum,
+        		banner.seq, banner.position, banner.subject, banner.banner, BANNER.LINK,
+        		banner.target, BANNER.RANK, banner.sdate, banner.edate, banner.status, banner.banner_bg,
+            	banner.brand_yn, banner.mall_yn, banner.staff_yn
+        FROM T_BANNER banner
+        WHERE status ='S'
+		<![CDATA[
+		   AND banner.SDATE <= TO_CHAR(SYSDATE, 'YYYY.MM.DD HH24:MI')
+		   AND banner.EDATE >= TO_CHAR(SYSDATE, 'YYYY.MM.DD HH24:MI')
+		]]>        
+        <isNotEmpty property="position">
+        	<isEqual property="position" compareValue="TOP">
+        	     AND banner.position IN  ('04','05','06', '07')
+        	</isEqual>
+        	<isNotEqual property="position" compareValue="TOP">
+        		and banner.position	=	#position# 
+        	</isNotEqual>        	        	
+		</isNotEmpty>
+		<isNotEmpty property="device_type">
+			<isEqual property="device_type" compareValue="P">
+	        	AND banner.position IN  ('01','02','03')					
+			</isEqual>
+			<isEqual property="device_type" compareValue="M">
+				AND banner.position IN  ('20','21','23')
+			</isEqual>			
+		</isNotEmpty>
+		<isNotEmpty property="brand_yn">
+			AND banner.brand_yn = #brand_yn#
+		</isNotEmpty>
+		<isNotEmpty property="mall_yn">
+			AND banner.mall_yn = #mall_yn#
+		</isNotEmpty>
+		<isNotEmpty property="staff_yn">
+			AND banner.staff_yn = #staff_yn#
+		</isNotEmpty>
+		<isNotEmpty property="site_code">
+			AND banner.SITE_CODE = #site_code#
+		</isNotEmpty>
+	</select>	
+	
+	<resultMap id="editBannerParam" class="Param">
+		<result property="seq" column="seq"></result>
+		<result property="subject" column="subject"></result>
+		<result property="contents" column="contents" jdbcType="CLOB" javaType="java.lang.String"></result>
+		<result property="banner" column="banner"></result>
+		<result property="sdate" column="sdate"></result>
+		<result property="edate" column="edate"></result>
+	</resultMap>
+	
+	<select id="getEditBannerList" resultMap="editBannerParam" parameterClass="Param" cacheModel="editBannerList">
+	   SELECT  row_number() over (order by banner.rank asc) rnum,
+        		banner.seq, banner.position, banner.subject, banner.contents, banner.banner, banner.sdate, banner.edate
+         FROM T_BANNER_EDITOR banner
+         WHERE status ='S'
+		<![CDATA[
+		   AND banner.SDATE <= TO_CHAR(SYSDATE, 'YYYY.MM.DD HH24:MI')
+		   AND banner.EDATE >= TO_CHAR(SYSDATE, 'YYYY.MM.DD HH24:MI')
+		]]>   
+		<isNotEmpty property="site_code">
+			AND banner.SITE_CODE = #site_code#
+		</isNotEmpty>		
+	</select>
+		
+	<select id="getCateList" resultClass="Param" parameterClass="Param" cacheModel="cateDept2List">
+		 SELECT cate_seq,
+		        cate_name,
+			    grp_seq
+		   FROM t_cate a
+		  WHERE site_code  = 'S101'
+		    AND status     = 'S'
+		    AND p_cate_seq = '1'
+		ORDER BY rank
+	</select>
+	
+	
+	<select id="getHotDealList" resultClass="Param" parameterClass="Param" cacheModel="hotDealList">
+	<![CDATA[
+		SELECT * FROM ( 
+	            SELECT 
+					row_number() over (order by tsale.TIMESALE_SEQ desc) rnum,
+				    pc.dpid, pc.grade_code, pc.device_type, pc.price,   
+				    pc.promotion_gift,	pc.promotion_discount, pc.promotion_online, pc.image_original, pc.image_large,
+				    display.site_code, display.pserial, display.title_l, display.title_s, display.tag, 
+				    display.default_price, display.show_grade_type, display.coupon_yn,
+				    display.regist_date, display.soldout,
+					stock.active_stock,
+					tsale.timesale_seq, tsale.title, tsale.banner_img_list, tsale.banner_img_pc, tsale.banner_img_mobile,
+					DECODE (pc.device_type, 'P',  tsale.banner_img_pc, tsale.banner_img_mobile) banner_img,
+			        to_char(tsale.start_date,'yyyy.mm.dd hh24:mi:ss') start_date, 
+			        to_char(tsale.end_date,'yyyy.mm.dd hh24:mi:ss') end_date, 
+			        tsale.remark		                      
+				 FROM 
+					t_product_cache pc, 
+				    t_product_display display,
+					t_wms_stock stock,
+					T_TIME_SALE tsale        
+				WHERE pc.dpid = display.dpid
+				AND display.pserial = stock.pserial(+)
+				AND tsale.dpid = display.dpid 	          
+				AND display.status ='S'		
+			    AND display.start_date <= SYSDATE
+			    AND display.end_date >= SYSDATE     
+				AND display.approval_yn = 'Y'
+				AND display.type       <> 'G'	    			    
+	 			AND tsale.status = 'S' 
+	           	AND tsale.site_code ='S101'
+	           	AND tsale.TIMESALE_SEQ > 0 
+	           	AND tsale.START_DATE <= SYSDATE 
+	           	AND tsale.end_date >= SYSDATE   
+			]]>
+			<include refid="Common.productCache"/>   	         
+	<![CDATA[
+		) WHERE ROWNUM <= 3
+	]]>
+	</select>
+	 
+	<resultMap id="noticeParam" class="Param">
+		<result property="seq" column="seq"></result>
+		<result property="title" column="title"></result>
+		<result property="contents" column="contents" jdbcType="CLOB" javaType="java.lang.String"></result>
+		<result property="hit" column="hit"></result>
+		<result property="notice_yn" column="notice_yn"></result>
+		<result property="wdate" column="wdate"></result>
+		<result property="thumbnail" column="thumbnail"></result>
+		<result property="image_list" column="image_list"></result>
+		<result property="regist_date" column="regist_date"></result>
+	</resultMap>
+		 
+	<select id="getNoticeList" resultMap="noticeParam"  parameterClass="Param" cacheModel="noticeList"> 
+	<![CDATA[
+			SELECT
+			        /*+ index_desc(a idx_notice_wdate) */
+			       ROWNUM rnum
+			     , a.seq
+			     , a.title
+			     , a.contents
+			     , a.hit
+			     , notice_yn
+			     , main_yn
+			     , wdate
+			     , thumbnail
+			     , image_list
+			     , TO_CHAR(a.regist_date, 'yyyy.mm.dd') regist_date 
+			  FROM t_notice a 
+			 WHERE a.site_code = #site_code# 
+			       AND a.seq > 0 
+			       AND a.wdate > ' '
+			       AND a.status = 'S'
+			       AND a.notice_type = 'N'
+			       AND rownum <= #rownum#	
+			       AND a.wdate < TO_CHAR(SYSDATE , 'yyyy.mm.dd hh24:mi:ss')
+		]]>		
+		<isNotEmpty property="brand_yn">
+					AND a.brand_yn = #brand_yn#
+		</isNotEmpty>
+		<isNotEmpty property="mall_yn">
+					AND a.mall_yn = #mall_yn#
+		</isNotEmpty>
+		<isNotEmpty property="staff_yn">
+					AND a.staff_yn = #staff_yn#
+		</isNotEmpty>
+		<isNotEmpty property="main_yn">
+					AND a.main_yn = #main_yn#
+		</isNotEmpty>
+		<isNotEmpty property="type">
+					AND (a.type = #type# or a.type = 'C')
+		</isNotEmpty>
+		<isNotEmpty property="brandShop">
+					AND (
+						a.brand_yn = 'Y'
+					    <isEqual property="brandShop" compareValue="Y">
+					        	OR a.staff_yn = 'Y'
+					    </isEqual>
+					    <isEqual property="brandShop" compareValue="N">
+					        	OR a.mall_yn = 'Y'
+					    </isEqual>						
+						)
+		</isNotEmpty>								
+  	</select>	
+	
+	<resultMap id="photoReviewParam" class="Param">
+		<result property="review_seq" column="review_seq"></result>
+		<result property="dpid" column="dpid"></result>
+		<result property="rel_dpid" column="rel_dpid"></result>
+		<result property="orderid" column="orderid"></result>
+		<result property="score" column="score"></result>
+		<result property="title" column="title"></result>
+		<result property="contents" column="contents" jdbcType="CLOB" javaType="java.lang.String"></result>
+		<result property="hit" column="hit"></result>
+		<result property="best_yn" column="best_yn"></result>
+		<result property="main_yn" column="main_yn"></result>
+		<result property="block_yn" column="block_yn"></result>
+		<result property="tester_yn" column="tester_yn"></result>
+		<result property="best_rank" column="best_rank"></result>
+		<result property="status" column="status"></result>
+		<result property="mem_id" column="mem_id"></result>
+		<result property="type" column="type"></result>
+		<result property="device_type" column="device_type"></result>
+		<result property="recommend" column="recommend"></result>
+		<result property="regist_date" column="regist_date"></result>
+		<result property="age" column="age"></result>
+		<result property="image_name" column="image_name"></result>
+		<result property="title_s" column="title_s"></result>
+	</resultMap>
+	
+	<select id="getPhotoReviewList" resultMap="photoReviewParam" parameterClass="Param" cacheModel="photoReviewList">
+	<![CDATA[
+		 SELECT		        
+	            /*+ index_desc ( review idx_product_review_main )  use_nl ( reivew display) ordered */		
+			    review.review_seq,
+			    review.dpid,
+	            review.rel_dpid,
+			    review.orderid,
+			    review.score,
+			    review.title,
+			    review.contents,
+			    review.hit,
+			    review.best_yn,
+			    review.main_yn,
+			    review.block_yn,
+			    review.tester_yn,
+			    review.best_rank,
+			    review.status,
+			    review.mem_id,
+	            review.type, review.device_type, review.recommend, 
+			    TO_CHAR(review.regist_date, 'yyyy.mm.dd') regist_date, age,
+			    nvl((SELECT image_name FROM t_product_review_image WHERE review_seq = review.REVIEW_SEQ AND ROWNUM = 1), thumbnail) image_name,
+			    display.title_s                       
+		   FROM t_product_review review, 
+		        t_product_display display
+	    	WHERE review.dpid = display.dpid
+	          	AND display.SITE_CODE = #site_code#
+		    	AND review.status     = 'S'
+	            AND display.status     = 'S'
+	            and review.review_seq > 0
+	            AND review.main_yn ='Y'
+	            AND review.type = 'P'	
+	        AND rownum <= 6
+	]]>
+	</select> 
+	
+	<select id="getBestProductList" resultClass="Param" parameterClass="Param" >
+		SELECT * FROM (  
+		 	SELECT 
+					row_number() over (order by sort.rank DESC) rnum,
+				    pc.dpid, pc.grade_code, pc.device_type, pc.price,   
+				    pc.promotion_gift,	pc.promotion_discount, pc.promotion_online, pc.image_original, pc.image_large,
+					pc.image_medium, pc.image_small, pc.image_thumb, pc.review_cnt, pc.review_score_avg,
+					pc.feature_01, pc.feature_02, pc.feature_03, pc.feature_04, pc.feature_05,   pc.option_cnt,
+					pc.feature_01_title,pc.feature_02_title,pc.feature_03_title,pc.feature_04_title,pc.feature_05_title,
+				    display.site_code, display.pserial, display.title_l, display.title_s, display.tag, display.default_price, display.show_grade_type,
+				    display.regist_date,  display.soldout, display.type,
+					sort.cate_seq,
+					f_active_stock(display.dpid) active_stock
+				 FROM 
+					t_product_cache pc, 
+				    t_product_display display,
+					t_product_sort sort          
+				WHERE pc.dpid = display.dpid
+				AND display.dpid = sort.dpid								
+			 <![CDATA[   
+				AND display.status ='S'		
+				AND display.list_yn = 'Y'	 
+				AND sort.status = '1' 
+			    AND display.start_date <= SYSDATE 
+			    AND display.end_date >= SYSDATE
+				AND sort.sort_type > ' '
+				AND display.approval_yn = 'Y'
+				AND display.type       <> 'G'	    				
+			]]>		    			  
+			<isNotEmpty property="sort_type">
+				AND sort.sort_type =  #sort_type# 
+			</isNotEmpty>					    
+			<isNotEmpty property="show_grade_type">
+				<isEqual property="show_grade_type" compareValue="Y">
+				AND display.show_grade_type	in ('A', 'E')
+				</isEqual>	
+				<isNotEqual property="show_grade_type" compareValue="Y">
+				AND display.show_grade_type	in ('A', 'S')
+				</isNotEqual>
+			</isNotEmpty>		
+			<isNotEmpty property="cate_seq">	
+			    AND sort.cate_seq =  #cate_seq#
+			</isNotEmpty>			
+				<include refid="Common.productCache"/>		
+		) WHERE ROWNUM <![CDATA[<]]>= 8 
+	</select>
+	
+	
+	<sql id="MallMain.getMobileHotListParam">
+	 <![CDATA[   
+			AND display.status ='S'		
+			AND display.list_yn = 'Y'	 
+			AND hot.status = '1' 
+		    AND hot.start_date <= SYSDATE
+		    AND hot.end_date >= SYSDATE	
+		    AND display.start_date <= SYSDATE
+		    AND display.end_date >= SYSDATE		
+	   		AND display.approval_yn = 'Y'
+			AND display.type       <> 'G'	    		    			    		    			  
+		]]>		    			  
+		<isNotEmpty property="show_grade_type">
+			<isEqual property="show_grade_type" compareValue="Y">
+			AND display.show_grade_type	in ('A', 'E')
+			</isEqual>	
+			<isNotEqual property="show_grade_type" compareValue="Y">
+			AND display.show_grade_type	in ('A', 'S')
+			</isNotEqual>
+		</isNotEmpty>									
+	</sql>	
+	
+	<select id="getMobileHotList" resultClass="Param" parameterClass="Param" cacheModel="mobileHotProductList">		  
+		select * from
+		( 		       
+			SELECT 
+				row_number() over (order by hot.rank asc) rnum,
+			    pc.dpid, pc.grade_code, pc.device_type, pc.price,   
+			    pc.promotion_gift,	pc.promotion_discount, pc.promotion_online, pc.image_original, pc.image_large,
+				pc.image_medium, pc.image_small, pc.image_thumb, pc.review_cnt, pc.review_score_avg,
+				pc.feature_01, pc.feature_02, pc.feature_03, pc.feature_04, pc.feature_05,   pc.option_cnt,
+				pc.feature_01_title,pc.feature_02_title,pc.feature_03_title,pc.feature_04_title,pc.feature_05_title,				
+			    display.site_code, display.pserial, display.title_l, display.title_s, display.tag, display.default_price, display.show_grade_type,
+			    display.regist_date, display.summary,  display.soldout, display.type,
+			    hot.rank,			
+				f_active_stock(display.dpid) active_stock
+			 FROM 
+				t_product_cache pc, 
+			    t_product_display display,
+				T_PRODUCT_MOBILE_HOT hot          
+			WHERE pc.dpid = display.dpid
+			AND display.dpid = hot.dpid		
+			<include refid="Common.productCache"/>							
+			<include refid="MallMain.getMobileHotListParam"/>	
+		  )	
+ 	    <![CDATA[   
+		  WHERE rnum <= #POS_END#
+		    AND rnum > #POS_STA#	
+		]]>		
+	</select>	
+	
+	<select id="getMobileHotListCount"  resultClass="Integer" parameterClass="Param" cacheModel="mobileHotProductListCount">
+			SELECT 
+				count(*)
+			 FROM 
+				t_product_cache pc, 
+			    t_product_display display,
+				T_PRODUCT_MOBILE_HOT hot          
+			WHERE pc.dpid = display.dpid
+			AND display.dpid = hot.dpid			
+			<include refid="Common.productCache"/>			
+			<include refid="MallMain.getMobileHotListParam"/>		
+	</select>
+	
+	<resultMap id="indexParam" class="Param">
+		<result property="seq" column="seq"></result>
+		<result property="title" column="title"></result>
+		<result property="start_date" column="start_date"></result>
+		<result property="end_date" column="end_date"></result>
+		<result property="device_type" column="device_type"></result>
+		<result property="url" column="url"></result>
+		<result property="url_mobile" column="url_mobile"></result>
+		<result property="contents" column="contents" jdbcType="CLOB" javaType="java.lang.String"></result>
+		<result property="contents_mobile" column="contents_mobile" jdbcType="CLOB" javaType="java.lang.String"></result>
+	</resultMap>
+	
+	
+	<select id="getIndexInfo" resultMap="indexParam" parameterClass="Param" cacheModel="indexInfo">
+		<![CDATA[
+		 SELECT /*+index_desc(a idx_shopping_index_site_code) */
+		        rownum rnum,
+		        a.seq,
+		        a.site_code,
+		        a.title,
+		        a.contents,
+		        a.contents_mobile,
+		        TO_CHAR(a.start_date, 'yyyy.mm.dd') start_date, 
+		        TO_CHAR(a.end_date, 'yyyy.mm.dd') end_date, 
+		        a.device_type,
+		        a.url,
+		        a.url_mobile 
+		   FROM t_shopping_index a 
+		  WHERE a.seq > 0
+		    AND a.site_code = #site_code#
+		    AND a.status = 'S'
+		    AND F_SHPPING_INDEX_TYPE(a.seq) = '01'
+		    AND a.device_type IN(#device_type#, 'C') 
+		]]>		    
+		<isNotEmpty property="brand_yn">
+					AND a.brand_yn = #brand_yn#
+		</isNotEmpty>
+		<isNotEmpty property="mall_yn">
+					AND a.mall_yn = #mall_yn#
+		</isNotEmpty>
+		<isNotEmpty property="staff_yn">
+					AND a.staff_yn = #staff_yn#
+		</isNotEmpty>
+		    AND ROWNUM = 1
+	</select>	
+	
+</sqlMap>
