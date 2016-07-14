@@ -23,6 +23,7 @@
 	}
 
 	Param	param	=	new Param(request);
+	// 이렇게하면..
 
 	// json setting
 	JSONObject resultObject = new JSONObject();
@@ -49,7 +50,7 @@
 		userIP = request.getRemoteAddr();
 	}
 
-	// 이벤트 종료처리
+	// 이벤트 종료처리 ㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋ
 	String today = Utils.getTimeStampString("yyyyMMdd");
 	String endday = "20160405";
 
