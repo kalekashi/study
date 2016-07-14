@@ -1,1 +1,3 @@
-# study sdSDfsdfsadf
+# study 
+
+# 연결이 안된다!!!
